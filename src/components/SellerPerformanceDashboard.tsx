@@ -105,6 +105,22 @@ export function SellerPerformanceDashboard({ sellerMetrics, isLoading, selectedS
 
   const { totalProductsListed, buyboxesWon, buyboxesLost, productsLosingBuybox, productsWinningBuybox } = sellerMetrics;
 
+  const formatDifference = (diff: number | null | undefined) => {
+    if (diff === null || diff === undefined) {
+      return <span className="text-muted-foreground">Único vendedor</span>;
+    }
+    if (diff === 0) {
+      return <span className="text-yellow-600">Empatado com concorrente</span>;
+    }
+    if (diff > 0) {
+      return <span className="text-green-600">Ganhando por R$ {diff.toFixed(2)}</span>;
+    }
+    // This case should ideally not happen for "winning" if logic is correct,
+    // but as a fallback for priceDifferenceToNext in winning products.
+    return <span className="text-red-600">Perdendo por R$ {Math.abs(diff).toFixed(2)}</span>; 
+  };
+
+
   return (
     <Card className="shadow-lg w-full">
       <CardHeader>
@@ -198,7 +214,6 @@ export function SellerPerformanceDashboard({ sellerMetrics, isLoading, selectedS
              <p className="text-sm text-green-600 font-medium mt-4">Ótimo! Este vendedor não está perdendo nenhum buybox para os produtos que lista.</p>
         )}
 
-        {/* Section for Products Winning Buybox */}
         <div className="mt-8 pt-6 border-t">
             <h3 className="text-lg font-semibold mb-3 flex items-center">
               <CheckCircle2 className="mr-2 h-5 w-5 text-green-600" />
@@ -212,6 +227,9 @@ export function SellerPerformanceDashboard({ sellerMetrics, isLoading, selectedS
                       <TableHead className="w-[60px] hidden sm:table-cell">Imagem</TableHead>
                       <TableHead>Produto (SKU)</TableHead>
                       <TableHead className="text-right">Seu Preço</TableHead>
+                      <TableHead className="text-right">Preço Vencedor</TableHead>
+                      <TableHead>Vencedor do Buybox</TableHead>
+                      <TableHead className="text-right">Diferença</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -232,6 +250,9 @@ export function SellerPerformanceDashboard({ sellerMetrics, isLoading, selectedS
                           <div className="text-xs text-muted-foreground">SKU: {item.sku}</div>
                         </TableCell>
                         <TableCell className="text-right font-semibold text-green-600">R$ {item.sellerPrice.toFixed(2)}</TableCell>
+                        <TableCell className="text-right font-semibold text-green-600">R$ {item.winningPrice.toFixed(2)}</TableCell>
+                        <TableCell className="max-w-[100px] truncate" title={item.winningSeller}>{item.winningSeller}</TableCell>
+                        <TableCell className="text-right">{formatDifference(item.priceDifferenceToNext)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -239,9 +260,9 @@ export function SellerPerformanceDashboard({ sellerMetrics, isLoading, selectedS
               </div>
             ) : buyboxesWon > 0 ? (
               <p className="text-sm text-muted-foreground mt-2">
-                Este vendedor está ganhando {buyboxesWon} buybox(es), mas os detalhes dos produtos não estão disponíveis nesta visualização (possivelmente ganhos sem concorrência direta, onde são o único vendedor do SKU).
+                Este vendedor está ganhando {buyboxesWon} buybox(es), mas os detalhes dos produtos não estão disponíveis nesta visualização (possivelmente ganhos sem concorrência direta, onde são o único vendedor do SKU, ou erro no processamento dos detalhes).
               </p>
-            ) : ( /* Corresponds to buyboxesWon === 0 */
+            ) : ( 
               <p className="text-sm text-red-600 font-medium mt-2">
                 Este vendedor não está ganhando nenhum buybox atualmente.
               </p>

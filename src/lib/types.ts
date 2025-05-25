@@ -50,6 +50,9 @@ export interface ProductWinningBuyboxInfo {
   descricao: string;
   imagem: string;
   sellerPrice: number;
+  winningPrice: number; // Price of the buybox winner (selected seller in this case)
+  winningSeller: string; // Name of the buybox winner (selected seller)
+  priceDifferenceToNext?: number | null; // Difference to the next closest competitor. null if no competitor.
 }
 
 export interface SellerAnalysisMetrics {

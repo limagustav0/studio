@@ -262,43 +262,37 @@ export const analyzeSellerPerformance = (
 
   skusListedBySeller.forEach(sku => {
     const sellerProductForSku = sellerProducts.find(p => p.sku === sku);
-    if (!sellerProductForSku) return; // Should not happen based on how skusListedBySeller is derived
+    if (!sellerProductForSku) return; 
 
     const allListingsForThisSku = productsBySkuGlobal[sku] || [];
     
     if (allListingsForThisSku.length === 0) {
-      // This case implies a data inconsistency if sellerProductForSku exists.
-      // If the seller is the only one listing this SKU, they win by default.
-      // However, allListingsForThisSku should contain at least sellerProductForSku.
-      // For safety, if it's truly empty, we can count it as a win if seller has it.
       console.warn(`Data integrity issue or seller lists SKU ${sku} not in global map.`);
-      // Let's assume if sellerProductForSku exists, it's a win if no other listings are found.
-      // This path is less likely if data is consistent.
-      buyboxesWon++;
-       productsWinningBuybox.push({
+      buyboxesWon++; // Assuming if seller lists it and it's not elsewhere, it's a win.
+      productsWinningBuybox.push({
         sku: sellerProductForSku.sku,
         descricao: sellerProductForSku.descricao,
         imagem: sellerProductForSku.imagem,
         sellerPrice: sellerProductForSku.preco_final,
+        winningPrice: sellerProductForSku.preco_final,
+        winningSeller: selectedSellerName,
+        priceDifferenceToNext: null, // No competitors
       });
       return; 
     }
 
     let globalMinPrice = Infinity;
-    let winningSellerForSku = ''; 
+    let winningSellerForSkuAtGlobalMin = ''; 
     
     allListingsForThisSku.forEach(p => {
       if (p.preco_final < globalMinPrice) {
         globalMinPrice = p.preco_final;
-        winningSellerForSku = p.loja;
+        winningSellerForSkuAtGlobalMin = p.loja;
       } else if (p.preco_final === globalMinPrice) {
-        // If multiple sellers tie for the lowest price:
-        // - If the selected seller is part of the tie, they are considered a winner for determining winningSellerForSku.
-        // - If selected seller is NOT part of the tie, winningSellerForSku can be any of the tied sellers.
-        if (winningSellerForSku !== selectedSellerName && p.loja === selectedSellerName) {
-           winningSellerForSku = selectedSellerName; // Prioritize selected seller in tie
-        } else if (!winningSellerForSku) { // First one encountered in a tie
-            winningSellerForSku = p.loja;
+        if (winningSellerForSkuAtGlobalMin !== selectedSellerName && p.loja === selectedSellerName) {
+           winningSellerForSkuAtGlobalMin = selectedSellerName;
+        } else if (!winningSellerForSkuAtGlobalMin) {
+            winningSellerForSkuAtGlobalMin = p.loja;
         }
       }
     });
@@ -307,11 +301,28 @@ export const analyzeSellerPerformance = (
 
     if (sellerPriceForSku <= globalMinPrice) { 
       buyboxesWon++;
+      let minPriceAmongCompetitors: number | null = null;
+      allListingsForThisSku.forEach(p => {
+        if (p.loja !== selectedSellerName) {
+          if (minPriceAmongCompetitors === null || p.preco_final < minPriceAmongCompetitors) {
+            minPriceAmongCompetitors = p.preco_final;
+          }
+        }
+      });
+
+      let priceDifferenceToNext: number | null = null;
+      if (minPriceAmongCompetitors !== null) {
+        priceDifferenceToNext = minPriceAmongCompetitors - sellerPriceForSku;
+      }
+
       productsWinningBuybox.push({
         sku: sellerProductForSku.sku,
         descricao: sellerProductForSku.descricao,
         imagem: sellerProductForSku.imagem,
         sellerPrice: sellerPriceForSku,
+        winningPrice: sellerPriceForSku, // Seller's price is the winning price
+        winningSeller: selectedSellerName, // Seller is the winner
+        priceDifferenceToNext: priceDifferenceToNext,
       });
     } else {
       buyboxesLost++;
@@ -321,7 +332,7 @@ export const analyzeSellerPerformance = (
         imagem: sellerProductForSku.imagem,
         sellerPrice: sellerPriceForSku,
         winningPrice: globalMinPrice,
-        winningSeller: winningSellerForSku, // The seller(s) who actually has the globalMinPrice
+        winningSeller: winningSellerForSkuAtGlobalMin, 
         priceDifference: sellerPriceForSku - globalMinPrice,
       });
     }
