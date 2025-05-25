@@ -21,6 +21,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from '@/components/ui/separator';
 
+const NO_SELLER_SELECTED_VALUE = "--none--";
+
 export default function HomePage() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState(''); 
@@ -240,12 +242,15 @@ export default function HomePage() {
                     </CardHeader>
                     <CardContent className="px-2 sm:px-6">
                         <Label htmlFor="focused-seller-filter" className="text-sm font-medium">Selecionar Vendedor para Análise Detalhada</Label>
-                        <Select value={focusedSeller || ""} onValueChange={(value) => setFocusedSeller(value === "" ? null : value)}>
+                        <Select 
+                            value={focusedSeller || ""} 
+                            onValueChange={(value) => setFocusedSeller(value === NO_SELLER_SELECTED_VALUE ? null : value)}
+                        >
                             <SelectTrigger id="focused-seller-filter" className="mt-1">
                             <SelectValue placeholder="Selecione um vendedor..." />
                             </SelectTrigger>
                             <SelectContent>
-                            <SelectItem value="">Nenhum (Limpar Seleção)</SelectItem>
+                            <SelectItem value={NO_SELLER_SELECTED_VALUE}>Nenhum (Limpar Seleção)</SelectItem>
                             {uniqueSellers.map(seller => <SelectItem key={`focused-${seller}`} value={seller}>{seller}</SelectItem>)}
                             </SelectContent>
                         </Select>
@@ -281,3 +286,4 @@ export default function HomePage() {
     </div>
   );
 }
+
