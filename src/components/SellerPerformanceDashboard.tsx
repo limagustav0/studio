@@ -3,7 +3,7 @@ import type { SellerAnalysisMetrics, ProductLosingBuyboxInfo, ProductWinningBuyb
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TrendingUp, TrendingDown, ListChecks, PackageSearch, AlertTriangle, Info, CheckCircle2, Clock } from 'lucide-react';
+import { TrendingUp, TrendingDown, ListChecks, PackageSearch, AlertTriangle, Info, CheckCircle2, Clock, CalendarClock } from 'lucide-react';
 import Image from 'next/image';
 import { format as formatDate, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -22,6 +22,16 @@ export function SellerPerformanceDashboard({ sellerMetrics, isLoading, selectedS
     } catch (e) {
       console.warn("Failed to format last update time:", e);
       return 'Data inválida';
+    }
+  };
+
+  const formatTableCellDateTime = (isoDateString: string | null | undefined) => {
+    if (!isoDateString) return 'N/A';
+    try {
+      return formatDate(parseISO(isoDateString), "dd/MM/yy HH:mm", { locale: ptBR });
+    } catch (e) {
+      console.warn("Failed to format table cell date time:", e);
+      return 'Inválida';
     }
   };
   
@@ -201,11 +211,12 @@ export function SellerPerformanceDashboard({ sellerMetrics, isLoading, selectedS
                     <TableHead className="text-right">Preço Vencedor</TableHead>
                     <TableHead>Vencedor do Buybox</TableHead>
                     <TableHead className="text-right">Diferença</TableHead>
+                    <TableHead className="text-right">Data e Hora</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {productsLosingBuybox.map((item) => (
-                    <TableRow key={`losing-${item.sku}`}>
+                    <TableRow key={`losing-${item.sku}-${item.data_hora}`}>
                       <TableCell className="hidden sm:table-cell">
                         <Image
                           src={item.imagem || "https://placehold.co/50x50.png"}
@@ -224,6 +235,7 @@ export function SellerPerformanceDashboard({ sellerMetrics, isLoading, selectedS
                       <TableCell className="text-right font-semibold text-green-600">R$ {item.winningPrice.toFixed(2)}</TableCell>
                       <TableCell className="max-w-[100px] truncate" title={item.winningSeller}>{item.winningSeller}</TableCell>
                       <TableCell className="text-right text-red-600">R$ {item.priceDifference.toFixed(2)}</TableCell>
+                      <TableCell className="text-right text-xs text-muted-foreground">{formatTableCellDateTime(item.data_hora)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -254,11 +266,12 @@ export function SellerPerformanceDashboard({ sellerMetrics, isLoading, selectedS
                       <TableHead className="text-right">Preço Vencedor</TableHead>
                       <TableHead>Vencedor do Buybox</TableHead>
                       <TableHead className="text-right">Diferença</TableHead>
+                      <TableHead className="text-right">Data e Hora</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {productsWinningBuybox.map((item) => (
-                      <TableRow key={`winning-${item.sku}`}>
+                      <TableRow key={`winning-${item.sku}-${item.data_hora}`}>
                         <TableCell className="hidden sm:table-cell">
                           <Image
                             src={item.imagem || "https://placehold.co/50x50.png"}
@@ -277,6 +290,7 @@ export function SellerPerformanceDashboard({ sellerMetrics, isLoading, selectedS
                         <TableCell className="text-right font-semibold text-green-600">R$ {item.winningPrice.toFixed(2)}</TableCell>
                         <TableCell className="max-w-[100px] truncate" title={item.winningSeller}>{item.winningSeller}</TableCell>
                         <TableCell className="text-right">{formatDifference(item.priceDifferenceToNext)}</TableCell>
+                        <TableCell className="text-right text-xs text-muted-foreground">{formatTableCellDateTime(item.data_hora)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -296,3 +310,4 @@ export function SellerPerformanceDashboard({ sellerMetrics, isLoading, selectedS
     </Card>
   );
 }
+

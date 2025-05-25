@@ -261,7 +261,7 @@ export const analyzeSellerPerformance = (
     });
     if (sellerProducts[0] && sellerProducts[0].data_hora) {
       try {
-        lastUpdateTime = sellerProducts[0].data_hora; // Already an ISO string
+        lastUpdateTime = sellerProducts[0].data_hora; 
       } catch (e) {
         console.warn("Could not parse date for lastUpdateTime", e);
         lastUpdateTime = null;
@@ -299,17 +299,18 @@ export const analyzeSellerPerformance = (
   const skusListedBySeller = new Set(sellerProducts.map(p => p.sku));
 
   skusListedBySeller.forEach(sku => {
-    const sellerProductForSku = sellerProducts.find(p => p.sku === sku);
+    const sellerProductForSku = sellerProducts.find(p => p.sku === sku && p.data_hora); // Ensure product has a date
     if (!sellerProductForSku) return; 
 
     const allListingsForThisSku = productsBySkuGlobal[sku] || [];
     
-    if (allListingsForThisSku.length === 0) { // Seller is the only one listing this SKU
+    if (allListingsForThisSku.length === 0) { 
       buyboxesWon++;
       productsWinningBuybox.push({
         sku: sellerProductForSku.sku,
         descricao: sellerProductForSku.descricao,
         imagem: sellerProductForSku.imagem,
+        data_hora: sellerProductForSku.data_hora,
         sellerPrice: sellerProductForSku.preco_final,
         winningPrice: sellerProductForSku.preco_final,
         winningSeller: selectedSellerName,
@@ -356,6 +357,7 @@ export const analyzeSellerPerformance = (
         sku: sellerProductForSku.sku,
         descricao: sellerProductForSku.descricao,
         imagem: sellerProductForSku.imagem,
+        data_hora: sellerProductForSku.data_hora,
         sellerPrice: sellerPriceForSku,
         winningPrice: sellerPriceForSku, 
         winningSeller: selectedSellerName, 
@@ -367,6 +369,7 @@ export const analyzeSellerPerformance = (
         sku: sellerProductForSku.sku,
         descricao: sellerProductForSku.descricao,
         imagem: sellerProductForSku.imagem,
+        data_hora: sellerProductForSku.data_hora,
         sellerPrice: sellerPriceForSku,
         winningPrice: globalMinPrice,
         winningSeller: winningSellerForSkuAtGlobalMin, 
@@ -385,3 +388,4 @@ export const analyzeSellerPerformance = (
     lastUpdateTime,
   };
 };
+

@@ -44,6 +44,7 @@ export interface ProductLosingBuyboxInfo {
   sku: string;
   descricao: string;
   imagem: string;
+  data_hora: string;
   sellerPrice: number;
   winningPrice: number;
   winningSeller: string;
@@ -54,6 +55,7 @@ export interface ProductWinningBuyboxInfo {
   sku: string;
   descricao: string;
   imagem: string;
+  data_hora: string;
   sellerPrice: number;
   winningPrice: number;
   winningSeller: string;
@@ -69,3 +71,4 @@ export interface SellerAnalysisMetrics {
   productsWinningBuybox: ProductWinningBuyboxInfo[];
   lastUpdateTime: string | null;
 }
+
