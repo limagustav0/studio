@@ -18,6 +18,14 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async rewrites() {
+    return [
+      {
+        source: '/api/price-data', // This is the path your app will fetch from
+        destination: 'https://streamlit-apirest.onrender.com/api/products/', // This is the actual external API
+      },
+    ];
+  },
 };
 
 export default nextConfig;

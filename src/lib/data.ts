@@ -19,8 +19,10 @@ interface ApiProduct {
 }
 
 export const fetchData = async (): Promise<Product[]> => {
+  const apiUrl = '/api/price-data'; // Use the proxied path
   try {
-    const response = await fetch('https://streamlit-apirest.onrender.com/api/products/');
+    // Fetch from the proxied API path
+    const response = await fetch(apiUrl);
     
     if (!response.ok) {
       let errorBody = '';
@@ -29,7 +31,7 @@ export const fetchData = async (): Promise<Product[]> => {
       } catch (e) {
         // Ignore if can't read body
       }
-      console.error(`API request failed with status ${response.status}. Body: ${errorBody}`);
+      console.error(`API request to ${apiUrl} failed with status ${response.status}. Body: ${errorBody}`);
       throw new Error(`API request failed with status ${response.status}.`);
     }
     
@@ -50,7 +52,7 @@ export const fetchData = async (): Promise<Product[]> => {
     }));
 
   } catch (error) { // This catches network errors or errors from response.json()
-    console.error("Fetch operation failed in fetchData:", error);
+    console.error(`Fetch operation failed for ${apiUrl}:`, error);
     if (error instanceof Error) {
       // Re-throw the original error to preserve its type and message for the caller
       throw error;
