@@ -1,5 +1,5 @@
 
-import type { Product, PriceTrendProductInfo, Metrics, BuyboxWinner } from './types';
+import type { Product, PriceTrendProductInfo, Metrics, BuyboxWinner, SellerAnalysisMetrics, ProductLosingBuyboxInfo } from './types';
 import { parseISO, compareDesc, differenceInDays } from 'date-fns';
 
 interface ApiProduct {
@@ -19,9 +19,8 @@ interface ApiProduct {
 }
 
 export const fetchData = async (): Promise<Product[]> => {
-  const apiUrl = '/api/price-data'; // Use the proxied path
+  const apiUrl = '/api/price-data'; 
   try {
-    // Fetch from the proxied API path
     const response = await fetch(apiUrl);
     
     if (!response.ok) {
@@ -37,11 +36,9 @@ export const fetchData = async (): Promise<Product[]> => {
     
     const apiProducts: ApiProduct[] = await response.json();
 
-    // Transform API data to Product type
     return apiProducts.map((apiProduct: ApiProduct, index: number): Product => {
       let currentId = apiProduct.id;
       if (!currentId || String(currentId).trim() === "") {
-        // If ID is missing or empty, create a fallback.
         const sanitizedDateTime = (apiProduct.data_hora || '').replace(/[\s:-]/g, ''); 
         currentId = `fallback-${apiProduct.sku || 'no-sku'}-${apiProduct.loja || 'no-loja'}-${sanitizedDateTime}-${index}`;
       }
@@ -139,7 +136,9 @@ export const analyzePriceTrends = (products: Product[], count: number = 3): Pric
     try {
       const earliestDate = parseISO(productAtEarliestDate.data_hora);
       const latestDate = parseISO(productAtLatestDate.data_hora);
-      if (differenceInDays(latestDate, earliestDate) < 1 && productAtEarliestDate.preco_final === productAtLatestDate.preco_final) continue;
+      // Only consider a trend if dates are different OR prices are different
+      if (productAtEarliestDate.data_hora === productAtLatestDate.data_hora && productAtEarliestDate.preco_final === productAtLatestDate.preco_final) continue;
+      // Further refinement: if dates are very close and price is same, maybe skip. For now, allow.
     } catch (e) {
       console.warn(`Skipping trend analysis for SKU ${sku} due to invalid date format or insufficient data. Error: ${e}`);
       continue;
@@ -147,7 +146,8 @@ export const analyzePriceTrends = (products: Product[], count: number = 3): Pric
 
     const priceChangePercentage = ((productAtLatestDate.preco_final - productAtEarliestDate.preco_final) / productAtEarliestDate.preco_final) * 100;
 
-    if (Math.abs(priceChangePercentage) > 0.001 || productAtEarliestDate.data_hora !== productAtLatestDate.data_hora) { 
+    // Ensure there's a meaningful change or different dates to report
+     if (Math.abs(priceChangePercentage) > 0.001 || productAtEarliestDate.data_hora !== productAtLatestDate.data_hora) { 
       priceChanges.push({
         sku: productAtLatestDate.sku,
         descricao: productAtLatestDate.descricao,
@@ -198,12 +198,15 @@ export const calculateBuyboxWins = (products: Product[]): BuyboxWinner[] => {
     const skuProducts = productsBySku[sku];
     if (skuProducts.length === 0) continue;
 
-    let minPrice = skuProducts[0].preco_final;
+    let minPrice = Infinity; // Start with infinity to find the true minimum
     skuProducts.forEach(p => {
       if (p.preco_final < minPrice) {
         minPrice = p.preco_final;
       }
     });
+
+    // Only proceed if a valid minPrice was found (not Infinity)
+    if (minPrice === Infinity) continue;
 
     const winningSellersThisSku = new Set<string>();
     skuProducts.forEach(p => {
@@ -220,4 +223,97 @@ export const calculateBuyboxWins = (products: Product[]): BuyboxWinner[] => {
   return Object.entries(buyboxWinsBySeller)
     .map(([seller, wins]) => ({ seller, wins }))
     .sort((a, b) => b.wins - a.wins);
+};
+
+
+export const analyzeSellerPerformance = (
+  allProducts: Product[],
+  selectedSellerName: string
+): SellerAnalysisMetrics | null => {
+  if (!allProducts || allProducts.length === 0 || !selectedSellerName) {
+    return null;
+  }
+
+  const sellerProducts = allProducts.filter(p => p.loja === selectedSellerName);
+  if (sellerProducts.length === 0) {
+    return {
+      sellerName: selectedSellerName,
+      totalProductsListed: 0,
+      buyboxesWon: 0,
+      buyboxesLost: 0,
+      productsLosingBuybox: [],
+    };
+  }
+
+  let buyboxesWon = 0;
+  let buyboxesLost = 0;
+  const productsLosingBuybox: ProductLosingBuyboxInfo[] = [];
+
+  const productsBySkuGlobal: Record<string, Product[]> = {};
+  allProducts.forEach(p => {
+    if (!p || !p.sku || p.preco_final === null || p.preco_final === undefined) return;
+    if (!productsBySkuGlobal[p.sku]) {
+      productsBySkuGlobal[p.sku] = [];
+    }
+    productsBySkuGlobal[p.sku].push(p);
+  });
+  
+  const skusListedBySeller = new Set(sellerProducts.map(p => p.sku));
+
+  skusListedBySeller.forEach(sku => {
+    const sellerProductForSku = sellerProducts.find(p => p.sku === sku);
+    if (!sellerProductForSku) return;
+
+    const allCompetitorsForSku = productsBySkuGlobal[sku] || [];
+    if (allCompetitorsForSku.length === 0) { 
+        // If the seller is the only one listing this SKU, they effectively win the buybox for it.
+        buyboxesWon++;
+        return;
+    }
+
+    let globalMinPrice = Infinity;
+    let winningSellerForSku = ''; // Actual seller with the absolute minimum price
+    
+    allCompetitorsForSku.forEach(p => {
+      if (p.preco_final < globalMinPrice) {
+        globalMinPrice = p.preco_final;
+        winningSellerForSku = p.loja;
+      } else if (p.preco_final === globalMinPrice) {
+        // If multiple sellers tie for the lowest price, any of them could be considered the winner.
+        // We can just pick the first one encountered or aggregate them if needed.
+        // For this logic, if the selected seller is part of the tie, they win.
+        // If not, any of the others is fine.
+        if (!winningSellerForSku || winningSellerForSku === selectedSellerName) {
+           // Prioritize selected seller or if no winner yet
+           winningSellerForSku = p.loja;
+        }
+      }
+    });
+    
+    const sellerPriceForSku = sellerProductForSku.preco_final;
+
+    if (sellerPriceForSku <= globalMinPrice) { 
+      buyboxesWon++;
+    } else {
+      // Seller's price is higher than the global minimum for this SKU
+      buyboxesLost++;
+      productsLosingBuybox.push({
+        sku: sellerProductForSku.sku,
+        descricao: sellerProductForSku.descricao,
+        imagem: sellerProductForSku.imagem,
+        sellerPrice: sellerPriceForSku,
+        winningPrice: globalMinPrice, // The absolute lowest price found
+        winningSeller: winningSellerForSku, // The seller who has this lowest price
+        priceDifference: sellerPriceForSku - globalMinPrice,
+      });
+    }
+  });
+
+  return {
+    sellerName: selectedSellerName,
+    totalProductsListed: sellerProducts.length,
+    buyboxesWon,
+    buyboxesLost,
+    productsLosingBuybox: productsLosingBuybox.sort((a,b) => b.priceDifference - a.priceDifference),
+  };
 };

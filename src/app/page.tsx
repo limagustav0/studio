@@ -2,14 +2,15 @@
 "use client";
 
 import { useEffect, useState, useMemo } from 'react';
-import type { Product, PriceTrendProductInfo, Metrics, BuyboxWinner } from '@/lib/types';
-import { fetchData, calculateMetrics, analyzePriceTrends, getUniqueMarketplaces, getUniqueSellers, calculateBuyboxWins } from '@/lib/data';
+import type { Product, PriceTrendProductInfo, Metrics, BuyboxWinner, SellerAnalysisMetrics } from '@/lib/types'; 
+import { fetchData, calculateMetrics, analyzePriceTrends, getUniqueMarketplaces, getUniqueSellers, calculateBuyboxWins, analyzeSellerPerformance } from '@/lib/data';
 import { AppHeader } from '@/components/AppHeader';
 import { ProductList } from '@/components/ProductList';
 import { SearchBar } from '@/components/SearchBar';
 import { MetricsDashboard } from '@/components/MetricsDashboard';
 import { PriceTrendDisplay } from '@/components/PriceTrendDisplay';
 import { BuyboxWinnersDisplay } from '@/components/BuyboxWinnersDisplay';
+import { SellerPerformanceDashboard } from '@/components/SellerPerformanceDashboard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/hooks/use-toast";
@@ -18,10 +19,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from '@/components/ui/separator';
 
 export default function HomePage() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
-  const [searchTerm, setSearchTerm] = useState(''); // For overview tab general search
+  const [searchTerm, setSearchTerm] = useState(''); 
   const [isLoading, setIsLoading] = useState(true);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [trendProducts, setTrendProducts] = useState<PriceTrendProductInfo[]>([]);
@@ -29,24 +31,37 @@ export default function HomePage() {
 
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedMarketplace, setSelectedMarketplace] = useState<string>("all");
-  const [selectedSeller, setSelectedSeller] = useState<string>("all");
-  const [skuFilter, setSkuFilter] = useState<string>(""); // For analysis tab SKU filter
+  const [selectedSeller, setSelectedSeller] = useState<string>("all"); 
+  const [skuFilter, setSkuFilter] = useState<string>(""); 
   
   const [buyboxWinners, setBuyboxWinners] = useState<BuyboxWinner[]>([]);
   const [uniqueMarketplaces, setUniqueMarketplaces] = useState<string[]>([]);
   const [uniqueSellers, setUniqueSellers] = useState<string[]>([]);
 
+  const [focusedSeller, setFocusedSeller] = useState<string | null>(null); 
+  const [sellerPerformanceData, setSellerPerformanceData] = useState<SellerAnalysisMetrics | null>(null);
+  const [isSellerPerformanceLoading, setIsSellerPerformanceLoading] = useState<boolean>(false);
+
   useEffect(() => {
     async function loadData() {
       setIsLoading(true);
+      setIsSellerPerformanceLoading(true); // Start loading for seller performance too
       try {
         const products = await fetchData();
         setAllProducts(products);
         setMetrics(calculateMetrics(products));
         setTrendProducts(analyzePriceTrends(products));
         setUniqueMarketplaces(getUniqueMarketplaces(products));
-        setUniqueSellers(getUniqueSellers(products));
+        const sellers = getUniqueSellers(products);
+        setUniqueSellers(sellers);
         setBuyboxWinners(calculateBuyboxWins(products));
+        
+        // If a seller is already focused, recalculate their performance with new products
+        if (focusedSeller && products.length > 0) {
+          const performanceData = analyzeSellerPerformance(products, focusedSeller);
+          setSellerPerformanceData(performanceData);
+        }
+
       } catch (error) {
         console.error("Failed to load products on page:", error);
         let description = "Não foi possível buscar os dados dos produtos. Por favor, tente novamente mais tarde.";
@@ -64,12 +79,28 @@ export default function HomePage() {
         });
       } finally {
         setIsLoading(false);
+        setIsSellerPerformanceLoading(false); // Stop seller performance loading
       }
     }
     loadData();
-  }, [toast]);
+  }, [toast]); // Main data loading effect
 
-  // For Overview Tab
+  useEffect(() => {
+    if (focusedSeller && allProducts.length > 0) {
+      setIsSellerPerformanceLoading(true);
+      // Simulating a slight delay for complex calculation if needed, otherwise remove setTimeout
+      setTimeout(() => {
+        const performanceData = analyzeSellerPerformance(allProducts, focusedSeller);
+        setSellerPerformanceData(performanceData);
+        setIsSellerPerformanceLoading(false);
+      }, 50); // Small delay to allow UI to update if calculations are synchronous and quick
+    } else if (!focusedSeller) { // Clear data if no seller is focused
+      setSellerPerformanceData(null);
+      setIsSellerPerformanceLoading(false);
+    }
+  }, [focusedSeller, allProducts]);
+
+
   const overviewFilteredProducts = useMemo(() => {
     if (!searchTerm) return allProducts;
     return allProducts.filter(product =>
@@ -78,7 +109,6 @@ export default function HomePage() {
     );
   }, [allProducts, searchTerm]);
 
-  // For Analysis Tab
   const detailedFilteredProducts = useMemo(() => {
     return allProducts.filter(product => {
       const marketplaceMatch = selectedMarketplace === "all" || (product.marketplace && product.marketplace.toLowerCase() === selectedMarketplace.toLowerCase());
@@ -153,8 +183,8 @@ export default function HomePage() {
           <TabsContent value="analysis" className="space-y-8">
             <Card className="shadow-lg p-2 sm:p-6">
               <CardHeader className="pb-4 px-2 sm:px-6">
-                <CardTitle>Filtros de Análise</CardTitle>
-                <CardDescription>Refine a lista de produtos e a análise de buybox.</CardDescription>
+                <CardTitle>Filtros de Análise de Produtos</CardTitle>
+                <CardDescription>Refine a lista de produtos (final da página) e a análise de buybox global.</CardDescription>
               </CardHeader>
               <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 px-2 sm:px-6">
                 <div>
@@ -196,12 +226,43 @@ export default function HomePage() {
             </Card>
 
             <section aria-labelledby="buybox-analysis-title">
-              <h2 id="buybox-analysis-title" className="sr-only">Análise de Buybox</h2>
+              <h2 id="buybox-analysis-title" className="sr-only">Análise de Buybox Global</h2>
               <BuyboxWinnersDisplay buyboxWinners={buyboxWinners} isLoading={isLoading && buyboxWinners.length === 0} />
             </section>
             
+            <Separator className="my-8" />
+
+            <section aria-labelledby="seller-performance-title" className="space-y-6">
+                <Card className="shadow-lg p-2 sm:p-6">
+                    <CardHeader className="pb-4 px-2 sm:px-6">
+                        <CardTitle>Análise de Desempenho por Vendedor</CardTitle>
+                        <CardDescription>Selecione um vendedor para ver suas métricas detalhadas de buybox e produtos.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="px-2 sm:px-6">
+                        <Label htmlFor="focused-seller-filter" className="text-sm font-medium">Selecionar Vendedor para Análise Detalhada</Label>
+                        <Select value={focusedSeller || ""} onValueChange={(value) => setFocusedSeller(value === "" ? null : value)}>
+                            <SelectTrigger id="focused-seller-filter" className="mt-1">
+                            <SelectValue placeholder="Selecione um vendedor..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                            <SelectItem value="">Nenhum (Limpar Seleção)</SelectItem>
+                            {uniqueSellers.map(seller => <SelectItem key={`focused-${seller}`} value={seller}>{seller}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </CardContent>
+                </Card>
+
+                <SellerPerformanceDashboard 
+                    sellerMetrics={sellerPerformanceData} 
+                    isLoading={isSellerPerformanceLoading || (isLoading && !allProducts.length)} // Also consider main loading state if no products yet
+                    selectedSellerName={focusedSeller}
+                />
+            </section>
+            
+            <Separator className="my-8" />
+
             <section aria-labelledby="filtered-product-list-title">
-              <h2 id="filtered-product-list-title" className="text-2xl font-semibold mb-6 text-center md:text-left">Lista de Produtos (Análise)</h2>
+              <h2 id="filtered-product-list-title" className="text-2xl font-semibold mb-6 text-center md:text-left">Lista de Produtos (filtrada pelos filtros gerais no topo da aba)</h2>
               {isLoading && detailedFilteredProducts.length === 0 && allProducts.length > 0 && !skuFilter && selectedMarketplace === 'all' && selectedSeller === 'all' ? (
                  <p className="text-center text-muted-foreground py-8">Carregando produtos...</p> 
               ) : isLoading && allProducts.length === 0 ? (

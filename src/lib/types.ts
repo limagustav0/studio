@@ -33,3 +33,22 @@ export interface BuyboxWinner {
   seller: string;
   wins: number;
 }
+
+// New types for Seller Performance Analysis
+export interface ProductLosingBuyboxInfo {
+  sku: string;
+  descricao: string;
+  imagem: string;
+  sellerPrice: number;
+  winningPrice: number;
+  winningSeller: string;
+  priceDifference: number;
+}
+
+export interface SellerAnalysisMetrics {
+  sellerName: string;
+  totalProductsListed: number;
+  buyboxesWon: number;
+  buyboxesLost: number;
+  productsLosingBuybox: ProductLosingBuyboxInfo[];
+}
