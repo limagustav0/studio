@@ -27,6 +27,10 @@ export interface Metrics {
   averagePrice: number;
   topRatedProduct: Product | null;
   mostFrequentStore: { store: string; count: number } | null;
+  totalDataPoints: number;
+  uniqueSKUs: number;
+  uniqueSellers: number;
+  uniqueMarketplaces: number;
 }
 
 export interface BuyboxWinner {
@@ -50,9 +54,9 @@ export interface ProductWinningBuyboxInfo {
   descricao: string;
   imagem: string;
   sellerPrice: number;
-  winningPrice: number; // Price of the buybox winner (selected seller in this case)
-  winningSeller: string; // Name of the buybox winner (selected seller)
-  priceDifferenceToNext?: number | null; // Difference to the next closest competitor. null if no competitor.
+  winningPrice: number; 
+  winningSeller: string; 
+  priceDifferenceToNext?: number | null; 
 }
 
 export interface SellerAnalysisMetrics {

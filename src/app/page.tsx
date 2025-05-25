@@ -20,6 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from '@/components/ui/separator';
+import { LayoutDashboard, BarChartBig } from 'lucide-react'; // Icons for tabs
 
 const NO_SELLER_SELECTED_VALUE = "--none--";
 
@@ -47,7 +48,7 @@ export default function HomePage() {
   useEffect(() => {
     async function loadData() {
       setIsLoading(true);
-      setIsSellerPerformanceLoading(true); // Start loading for seller performance too
+      setIsSellerPerformanceLoading(true); 
       try {
         const products = await fetchData();
         setAllProducts(products);
@@ -58,7 +59,6 @@ export default function HomePage() {
         setUniqueSellers(sellers);
         setBuyboxWinners(calculateBuyboxWins(products));
         
-        // If a seller is already focused, recalculate their performance with new products
         if (focusedSeller && products.length > 0) {
           const performanceData = analyzeSellerPerformance(products, focusedSeller);
           setSellerPerformanceData(performanceData);
@@ -81,22 +81,21 @@ export default function HomePage() {
         });
       } finally {
         setIsLoading(false);
-        setIsSellerPerformanceLoading(false); // Stop seller performance loading
+        setIsSellerPerformanceLoading(false); 
       }
     }
     loadData();
-  }, [toast]); // Main data loading effect
+  }, [toast]); 
 
   useEffect(() => {
     if (focusedSeller && allProducts.length > 0) {
       setIsSellerPerformanceLoading(true);
-      // Simulating a slight delay for complex calculation if needed, otherwise remove setTimeout
       setTimeout(() => {
         const performanceData = analyzeSellerPerformance(allProducts, focusedSeller);
         setSellerPerformanceData(performanceData);
         setIsSellerPerformanceLoading(false);
-      }, 50); // Small delay to allow UI to update if calculations are synchronous and quick
-    } else if (!focusedSeller) { // Clear data if no seller is focused
+      }, 50); 
+    } else if (!focusedSeller) { 
       setSellerPerformanceData(null);
       setIsSellerPerformanceLoading(false);
     }
@@ -144,13 +143,19 @@ export default function HomePage() {
   );
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-background">
       <AppHeader />
       <main className="flex-grow container mx-auto px-4 py-8 space-y-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6 sticky top-[calc(var(--header-height,68px)+1rem)] bg-background z-40 py-2 shadow-sm">
-            <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-            <TabsTrigger value="analysis">Análise Detalhada</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 mb-6 sticky top-[calc(var(--header-height,68px)+1rem)] bg-background z-40 py-2 shadow-md gap-2 rounded-lg">
+            <TabsTrigger value="overview" className="px-4 py-2.5 text-sm sm:text-base font-medium flex items-center justify-center gap-2 data-[state=active]:shadow-lg">
+              <LayoutDashboard className="h-5 w-5" />
+              Visão Geral
+            </TabsTrigger>
+            <TabsTrigger value="analysis" className="px-4 py-2.5 text-sm sm:text-base font-medium flex items-center justify-center gap-2 data-[state=active]:shadow-lg">
+              <BarChartBig className="h-5 w-5" />
+              Análise Detalhada
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-8">
@@ -243,7 +248,7 @@ export default function HomePage() {
                     <CardContent className="px-2 sm:px-6">
                         <Label htmlFor="focused-seller-filter" className="text-sm font-medium">Selecionar Vendedor para Análise Detalhada</Label>
                         <Select 
-                            value={focusedSeller || ""} 
+                            value={focusedSeller || NO_SELLER_SELECTED_VALUE} 
                             onValueChange={(value) => setFocusedSeller(value === NO_SELLER_SELECTED_VALUE ? null : value)}
                         >
                             <SelectTrigger id="focused-seller-filter" className="mt-1">
@@ -259,7 +264,7 @@ export default function HomePage() {
 
                 <SellerPerformanceDashboard 
                     sellerMetrics={sellerPerformanceData} 
-                    isLoading={isSellerPerformanceLoading || (isLoading && !allProducts.length)} // Also consider main loading state if no products yet
+                    isLoading={isSellerPerformanceLoading || (isLoading && !allProducts.length)} 
                     selectedSellerName={focusedSeller}
                 />
             </section>
@@ -279,11 +284,10 @@ export default function HomePage() {
           </TabsContent>
         </Tabs>
       </main>
-      <footer className="bg-card text-card-foreground py-6 text-center text-sm">
+      <footer className="bg-card text-card-foreground py-6 text-center text-sm border-t">
         <p>&copy; {new Date().getFullYear()} Painel PriceWise. Todos os direitos reservados.</p>
       </footer>
       <Toaster />
     </div>
   );
 }
-
