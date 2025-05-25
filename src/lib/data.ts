@@ -1,5 +1,5 @@
 
-import type { Product, PriceTrendProductInfo, Metrics, BuyboxWinner, SellerAnalysisMetrics, ProductLosingBuyboxInfo } from './types';
+import type { Product, PriceTrendProductInfo, Metrics, BuyboxWinner, SellerAnalysisMetrics, ProductLosingBuyboxInfo, ProductWinningBuyboxInfo } from './types';
 import { parseISO, compareDesc, differenceInDays } from 'date-fns';
 
 interface ApiProduct {
@@ -122,6 +122,7 @@ export const analyzePriceTrends = (products: Product[], count: number = 3): Pric
       .filter(p => p && p.data_hora && p.preco_final !== null && p.preco_final !== undefined) 
       .sort((a, b) => {
         try {
+          // Sort by date ascending
           return parseISO(a.data_hora).getTime() - parseISO(b.data_hora).getTime();
         } catch {
           return 0; 
@@ -136,9 +137,7 @@ export const analyzePriceTrends = (products: Product[], count: number = 3): Pric
     try {
       const earliestDate = parseISO(productAtEarliestDate.data_hora);
       const latestDate = parseISO(productAtLatestDate.data_hora);
-      // Only consider a trend if dates are different OR prices are different
       if (productAtEarliestDate.data_hora === productAtLatestDate.data_hora && productAtEarliestDate.preco_final === productAtLatestDate.preco_final) continue;
-      // Further refinement: if dates are very close and price is same, maybe skip. For now, allow.
     } catch (e) {
       console.warn(`Skipping trend analysis for SKU ${sku} due to invalid date format or insufficient data. Error: ${e}`);
       continue;
@@ -146,7 +145,6 @@ export const analyzePriceTrends = (products: Product[], count: number = 3): Pric
 
     const priceChangePercentage = ((productAtLatestDate.preco_final - productAtEarliestDate.preco_final) / productAtEarliestDate.preco_final) * 100;
 
-    // Ensure there's a meaningful change or different dates to report
      if (Math.abs(priceChangePercentage) > 0.001 || productAtEarliestDate.data_hora !== productAtLatestDate.data_hora) { 
       priceChanges.push({
         sku: productAtLatestDate.sku,
@@ -198,14 +196,13 @@ export const calculateBuyboxWins = (products: Product[]): BuyboxWinner[] => {
     const skuProducts = productsBySku[sku];
     if (skuProducts.length === 0) continue;
 
-    let minPrice = Infinity; // Start with infinity to find the true minimum
+    let minPrice = Infinity; 
     skuProducts.forEach(p => {
       if (p.preco_final < minPrice) {
         minPrice = p.preco_final;
       }
     });
 
-    // Only proceed if a valid minPrice was found (not Infinity)
     if (minPrice === Infinity) continue;
 
     const winningSellersThisSku = new Set<string>();
@@ -235,6 +232,7 @@ export const analyzeSellerPerformance = (
   }
 
   const sellerProducts = allProducts.filter(p => p.loja === selectedSellerName);
+
   if (sellerProducts.length === 0) {
     return {
       sellerName: selectedSellerName,
@@ -242,12 +240,14 @@ export const analyzeSellerPerformance = (
       buyboxesWon: 0,
       buyboxesLost: 0,
       productsLosingBuybox: [],
+      productsWinningBuybox: [],
     };
   }
 
   let buyboxesWon = 0;
   let buyboxesLost = 0;
   const productsLosingBuybox: ProductLosingBuyboxInfo[] = [];
+  const productsWinningBuybox: ProductWinningBuyboxInfo[] = [];
 
   const productsBySkuGlobal: Record<string, Product[]> = {};
   allProducts.forEach(p => {
@@ -262,30 +262,43 @@ export const analyzeSellerPerformance = (
 
   skusListedBySeller.forEach(sku => {
     const sellerProductForSku = sellerProducts.find(p => p.sku === sku);
-    if (!sellerProductForSku) return;
+    if (!sellerProductForSku) return; // Should not happen based on how skusListedBySeller is derived
 
-    const allCompetitorsForSku = productsBySkuGlobal[sku] || [];
-    if (allCompetitorsForSku.length === 0) { 
-        // If the seller is the only one listing this SKU, they effectively win the buybox for it.
-        buyboxesWon++;
-        return;
+    const allListingsForThisSku = productsBySkuGlobal[sku] || [];
+    
+    if (allListingsForThisSku.length === 0) {
+      // This case implies a data inconsistency if sellerProductForSku exists.
+      // If the seller is the only one listing this SKU, they win by default.
+      // However, allListingsForThisSku should contain at least sellerProductForSku.
+      // For safety, if it's truly empty, we can count it as a win if seller has it.
+      console.warn(`Data integrity issue or seller lists SKU ${sku} not in global map.`);
+      // Let's assume if sellerProductForSku exists, it's a win if no other listings are found.
+      // This path is less likely if data is consistent.
+      buyboxesWon++;
+       productsWinningBuybox.push({
+        sku: sellerProductForSku.sku,
+        descricao: sellerProductForSku.descricao,
+        imagem: sellerProductForSku.imagem,
+        sellerPrice: sellerProductForSku.preco_final,
+      });
+      return; 
     }
 
     let globalMinPrice = Infinity;
-    let winningSellerForSku = ''; // Actual seller with the absolute minimum price
+    let winningSellerForSku = ''; 
     
-    allCompetitorsForSku.forEach(p => {
+    allListingsForThisSku.forEach(p => {
       if (p.preco_final < globalMinPrice) {
         globalMinPrice = p.preco_final;
         winningSellerForSku = p.loja;
       } else if (p.preco_final === globalMinPrice) {
-        // If multiple sellers tie for the lowest price, any of them could be considered the winner.
-        // We can just pick the first one encountered or aggregate them if needed.
-        // For this logic, if the selected seller is part of the tie, they win.
-        // If not, any of the others is fine.
-        if (!winningSellerForSku || winningSellerForSku === selectedSellerName) {
-           // Prioritize selected seller or if no winner yet
-           winningSellerForSku = p.loja;
+        // If multiple sellers tie for the lowest price:
+        // - If the selected seller is part of the tie, they are considered a winner for determining winningSellerForSku.
+        // - If selected seller is NOT part of the tie, winningSellerForSku can be any of the tied sellers.
+        if (winningSellerForSku !== selectedSellerName && p.loja === selectedSellerName) {
+           winningSellerForSku = selectedSellerName; // Prioritize selected seller in tie
+        } else if (!winningSellerForSku) { // First one encountered in a tie
+            winningSellerForSku = p.loja;
         }
       }
     });
@@ -294,16 +307,21 @@ export const analyzeSellerPerformance = (
 
     if (sellerPriceForSku <= globalMinPrice) { 
       buyboxesWon++;
+      productsWinningBuybox.push({
+        sku: sellerProductForSku.sku,
+        descricao: sellerProductForSku.descricao,
+        imagem: sellerProductForSku.imagem,
+        sellerPrice: sellerPriceForSku,
+      });
     } else {
-      // Seller's price is higher than the global minimum for this SKU
       buyboxesLost++;
       productsLosingBuybox.push({
         sku: sellerProductForSku.sku,
         descricao: sellerProductForSku.descricao,
         imagem: sellerProductForSku.imagem,
         sellerPrice: sellerPriceForSku,
-        winningPrice: globalMinPrice, // The absolute lowest price found
-        winningSeller: winningSellerForSku, // The seller who has this lowest price
+        winningPrice: globalMinPrice,
+        winningSeller: winningSellerForSku, // The seller(s) who actually has the globalMinPrice
         priceDifference: sellerPriceForSku - globalMinPrice,
       });
     }
@@ -315,5 +333,6 @@ export const analyzeSellerPerformance = (
     buyboxesWon,
     buyboxesLost,
     productsLosingBuybox: productsLosingBuybox.sort((a,b) => b.priceDifference - a.priceDifference),
+    productsWinningBuybox: productsWinningBuybox.sort((a,b) => a.descricao.localeCompare(b.descricao)),
   };
 };
