@@ -38,18 +38,27 @@ export const fetchData = async (): Promise<Product[]> => {
     const apiProducts: ApiProduct[] = await response.json();
 
     // Transform API data to Product type
-    return apiProducts.map((apiProduct: ApiProduct): Product => ({
-      id: apiProduct.id,
-      sku: apiProduct.sku,
-      loja: apiProduct.loja,
-      preco_final: parseFloat(apiProduct.preco_final) || 0,
-      // Convert "YYYY-MM-DD HH:MM:SS" to ISO string "YYYY-MM-DDTHH:MM:SSZ" (assuming UTC)
-      data_hora: apiProduct.data_hora.replace(' ', 'T') + 'Z',
-      marketplace: apiProduct.marketplace,
-      descricao: apiProduct.descricao,
-      avaliacao: parseFloat(apiProduct.avaliacao) || 0,
-      imagem: apiProduct.imagem || 'https://placehold.co/300x200.png', // Fallback if image is missing
-    }));
+    return apiProducts.map((apiProduct: ApiProduct, index: number): Product => {
+      let currentId = apiProduct.id;
+      if (!currentId || String(currentId).trim() === "") {
+        // If ID is missing or empty, create a fallback.
+        // Using SKU, loja, a sanitized data_hora, and index for uniqueness.
+        const sanitizedDateTime = (apiProduct.data_hora || '').replace(/[\s:-]/g, ''); // Remove spaces, hyphens, and colons
+        currentId = `fallback-${apiProduct.sku || 'no-sku'}-${apiProduct.loja || 'no-loja'}-${sanitizedDateTime}-${index}`;
+      }
+      return {
+        id: String(currentId), // Ensure id is always a string
+        sku: apiProduct.sku,
+        loja: apiProduct.loja,
+        preco_final: parseFloat(apiProduct.preco_final) || 0,
+        // Convert "YYYY-MM-DD HH:MM:SS" to ISO string "YYYY-MM-DDTHH:MM:SSZ" (assuming UTC if no tz info)
+        data_hora: (apiProduct.data_hora || '').includes('T') ? (apiProduct.data_hora || '') : (apiProduct.data_hora || '').replace(' ', 'T') + 'Z',
+        marketplace: apiProduct.marketplace,
+        descricao: apiProduct.descricao,
+        avaliacao: parseFloat(apiProduct.avaliacao) || 0,
+        imagem: apiProduct.imagem || 'https://placehold.co/300x200.png', // Fallback if image is missing
+      };
+    });
 
   } catch (error) { // This catches network errors or errors from response.json()
     console.error(`Fetch operation failed for ${apiUrl}:`, error);
@@ -71,7 +80,7 @@ export const calculateMetrics = (products: Product[]): Metrics => {
     };
   }
 
-  const validProducts = products.filter(p => !isNaN(p.preco_final) && !isNaN(p.avaliacao));
+  const validProducts = products.filter(p => p && !isNaN(p.preco_final) && !isNaN(p.avaliacao));
 
   if (validProducts.length === 0) {
     return {
@@ -103,6 +112,7 @@ export const calculateMetrics = (products: Product[]): Metrics => {
 export const analyzePriceTrends = (products: Product[], count: number = 3): PriceTrendProductInfo[] => {
   const productsBySku: Record<string, Product[]> = {};
   products.forEach(product => {
+    if (!product || !product.sku) return; // Skip if product or sku is null/undefined
     if (!productsBySku[product.sku]) {
       productsBySku[product.sku] = [];
     }
@@ -112,26 +122,32 @@ export const analyzePriceTrends = (products: Product[], count: number = 3): Pric
   const priceChanges: PriceTrendProductInfo[] = [];
 
   for (const sku in productsBySku) {
-    // Sorts descending by date (latest first)
-    const skuProducts = productsBySku[sku].sort((a, b) => 
-      compareDesc(parseISO(a.data_hora), parseISO(b.data_hora)) 
-    );
+    // Sorts ascending by date (earliest first) then take first and last for comparison
+    const skuProducts = productsBySku[sku]
+      .filter(p => p && p.data_hora) // Ensure product and data_hora exist
+      .sort((a, b) => 
+        parseISO(a.data_hora).getTime() - parseISO(b.data_hora).getTime()
+      );
 
     if (skuProducts.length < 2) continue;
 
-    const productAtLatestDate = skuProducts[0]; 
-    const productAtEarliestDate = skuProducts[skuProducts.length - 1];
+    const productAtEarliestDate = skuProducts[0]; 
+    const productAtLatestDate = skuProducts[skuProducts.length - 1];
     
     try {
-      if (differenceInDays(parseISO(productAtLatestDate.data_hora), parseISO(productAtEarliestDate.data_hora)) < 1) continue;
+      // Ensure dates are valid and there's at least some difference
+      const earliestDate = parseISO(productAtEarliestDate.data_hora);
+      const latestDate = parseISO(productAtLatestDate.data_hora);
+      if (differenceInDays(latestDate, earliestDate) < 1 && productAtEarliestDate.preco_final === productAtLatestDate.preco_final) continue;
     } catch (e) {
-      console.warn(`Skipping trend analysis for SKU ${sku} due to invalid date format or insufficient data.`);
+      console.warn(`Skipping trend analysis for SKU ${sku} due to invalid date format or insufficient data. Error: ${e}`);
       continue;
     }
 
     const priceChangePercentage = ((productAtLatestDate.preco_final - productAtEarliestDate.preco_final) / productAtEarliestDate.preco_final) * 100;
 
-    if (Math.abs(priceChangePercentage) > 0) { 
+    // Only include if there's an actual price change, or if you want to show all significant changes (even if 0 if dates differ)
+    if (Math.abs(priceChangePercentage) > 0.001 || productAtEarliestDate.data_hora !== productAtLatestDate.data_hora) { 
       priceChanges.push({
         sku: productAtLatestDate.sku,
         descricao: productAtLatestDate.descricao,
@@ -151,3 +167,4 @@ export const analyzePriceTrends = (products: Product[], count: number = 3): Pric
     .sort((a, b) => Math.abs(b.price_change_percentage) - Math.abs(a.price_change_percentage))
     .slice(0, count);
 };
+
