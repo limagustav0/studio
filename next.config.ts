@@ -35,7 +35,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/api/price-data', // This is the path your app will fetch from
-        destination: 'https://streamlit-apirest.onrender.com/api/products/', // This is the actual external API
+        destination: 'http://34.233.35.91:8000/api/products/', // This is the actual external API
       },
     ];
   },
