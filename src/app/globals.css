@@ -8,98 +8,99 @@ body {
 
 @layer base {
   :root {
-    --background: 0 0% 96.1%; /* #F5F5F5 Off-white */
-    --foreground: 240 10% 3.9%; /* Dark Blue/Black for text */
+    /* Cyberpunk-inspired: Black background, White text, Cyan primary, Magenta accent */
+    --background: 0 0% 0%; /* Black */
+    --foreground: 0 0% 100%; /* White */
 
-    --card: 240 67% 94.1%; /* #E6E6FA Soft Lavender */
-    --card-foreground: 240 10% 3.9%; /* Dark text on Soft Lavender cards */
+    --card: 0 0% 7%; /* Very Dark Gray for cards */
+    --card-foreground: 0 0% 100%; /* White text on cards */
 
-    --popover: 240 67% 94.1%; /* Soft Lavender */
-    --popover-foreground: 240 10% 3.9%;
+    --popover: 0 0% 7%; /* Popovers same as cards */
+    --popover-foreground: 0 0% 100%;
 
-    --primary: 270 34.3% 57.3%; /* #9467bd Muted Violet - for buttons, main actions */
-    --primary-foreground: 0 0% 100%; /* White text on Muted Violet */
+    --primary: 180 100% 50%; /* Bright Cyan */
+    --primary-foreground: 0 0% 0%; /* Black text on bright primary */
 
-    --secondary: 240 50% 90%; /* Lighter version of lavender or gray */
-    --secondary-foreground: 240 10% 3.9%;
+    --secondary: 0 0% 15%; /* Dark Gray for secondary elements */
+    --secondary-foreground: 0 0% 100%; /* White text on secondary */
 
-    --muted: 0 0% 90%; /* Light gray for muted contexts */
-    --muted-foreground: 0 0% 45.1%; /* Grayer text for muted contexts */
+    --muted: 0 0% 10%; /* Darker Gray for muted elements */
+    --muted-foreground: 0 0% 65%; /* Lighter Gray for muted text */
 
-    --accent: 270 34.3% 57.3%; /* Muted Violet for highlights, links (can be same as primary) */
-    --accent-foreground: 0 0% 100%; /* White text on Muted Violet */
+    --accent: 300 100% 50%; /* Bright Magenta */
+    --accent-foreground: 0 0% 0%; /* Black text on bright accent */
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 84.2% 60.2%; /* Default Red - might need adjustment for contrast */
+    --destructive-foreground: 0 0% 100%; /* White text on destructive */
 
-    --border: 240 20% 88%; /* Border color complementing Soft Lavender and Off-white */
-    --input: 0 0% 100%; /* White for input fields */
-    --ring: 270 34.3% 57.3%; /* Muted Violet for focus rings */
+    --border: 0 0% 15%; /* Dark Gray border */
+    --input: 0 0% 10%; /* Dark Gray input background */
+    --ring: 180 100% 50%; /* Cyan for focus rings */
     
-    --chart-1: 270 34.3% 57.3%;
-    --chart-2: 240 60% 70%;
-    --chart-3: 270 30% 75%;
-    --chart-4: 240 40% 60%;
-    --chart-5: 270 20% 50%;
+    --chart-1: 180 100% 50%; /* Cyan */
+    --chart-2: 300 100% 50%; /* Magenta */
+    --chart-3: 210 100% 60%; /* A bright blue */
+    --chart-4: 270 100% 65%; /* A bright purple */
+    --chart-5: 330 100% 65%; /* A bright pink */
 
     --radius: 0.5rem;
 
-    /* Sidebar variables, can be adjusted if sidebar is used, or kept similar to main theme */
-    --sidebar-background: 240 10% 10%; /* Darker sidebar for contrast if needed */
-    --sidebar-foreground: 0 0% 96.1%;
-    --sidebar-primary: 270 34.3% 57.3%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 270 34.3% 65.3%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 240 10% 20%;
-    --sidebar-ring: 270 34.3% 57.3%;
+    /* Sidebar variables - consistent with the new dark theme */
+    --sidebar-background: 0 0% 4%; /* Slightly off-black for sidebar */
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 180 100% 50%;
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 300 100% 50%;
+    --sidebar-accent-foreground: 0 0% 0%;
+    --sidebar-border: 0 0% 10%;
+    --sidebar-ring: 180 100% 50%;
   }
 
   .dark {
-    /* Keeping dark mode fairly standard, can be themed further if needed */
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
+    /* :root is already a dark theme. .dark can be identical or offer slight variations. */
+    /* For simplicity, keeping it identical to :root as :root is already dark. */
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
 
-    --card: 240 10% 10%; /* Darker lavender/blue */
-    --card-foreground: 0 0% 98%;
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 100%;
 
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 100%;
 
-    --primary: 270 40% 65%; /* Brighter Muted Violet for dark mode */
-    --primary-foreground: 0 0% 10%;
+    --primary: 180 100% 50%;
+    --primary-foreground: 0 0% 0%;
 
-    --secondary: 240 5% 14.9%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 240 5% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 65%;
 
-    --accent: 270 40% 65%;
-    --accent-foreground: 0 0% 10%;
+    --accent: 300 100% 50%;
+    --accent-foreground: 0 0% 0%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 70% 55%; /* Slightly adjusted destructive for consistency */
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 240 5% 14.9%;
-    --input: 240 5% 14.9%;
-    --ring: 270 40% 70%;
+    --border: 0 0% 15%;
+    --input: 0 0% 10%;
+    --ring: 180 100% 50%;
     
-    --chart-1: 270 40% 65%;
-    --chart-2: 240 50% 60%;
-    --chart-3: 270 35% 70%;
-    --chart-4: 240 30% 50%;
-    --chart-5: 270 25% 55%;
+    --chart-1: 180 100% 50%;
+    --chart-2: 300 100% 50%;
+    --chart-3: 210 100% 60%;
+    --chart-4: 270 100% 65%;
+    --chart-5: 330 100% 65%;
 
-    /* Sidebar variables for dark mode */
-    --sidebar-background: 240 10% 3.9%;
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 270 40% 65%;
-    --sidebar-primary-foreground: 0 0% 10%;
-    --sidebar-accent: 270 40% 70%;
-    --sidebar-accent-foreground: 0 0% 10%;
-    --sidebar-border: 240 5% 14.9%;
-    --sidebar-ring: 270 40% 70%;
+    --sidebar-background: 0 0% 4%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 180 100% 50%;
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 300 100% 50%;
+    --sidebar-accent-foreground: 0 0% 0%;
+    --sidebar-border: 0 0% 10%;
+    --sidebar-ring: 180 100% 50%;
   }
 }
 
