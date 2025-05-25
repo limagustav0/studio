@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import { GeistSans } from 'geist/font/sans';
 import { GeistMono } from 'geist/font/mono';
@@ -5,7 +6,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: 'Painel PriceWise',
+  title: 'Monitoramento KAMI PRICING',
   description: 'Dashboard de monitoramento e análise de preços de produtos.',
 };
 
