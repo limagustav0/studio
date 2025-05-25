@@ -1,116 +1,46 @@
+
 import type { Product, PriceTrendProductInfo, Metrics } from './types';
 import { parseISO, compareDesc, differenceInDays } from 'date-fns';
 
-export const mockProducts: Product[] = [
-  {
-    id: 'SKU001',
-    sku: 'SKU001',
-    loja: 'Tech Emporium',
-    preco_final: 1299.99,
-    data_hora: '2024-05-01T10:00:00Z',
-    marketplace: 'OnlineStore',
-    descricao: 'Advanced Laptop Pro 15"',
-    avaliacao: 4.8,
-    imagem: 'https://placehold.co/300x200.png',
-  },
-  {
-    id: 'SKU001_old',
-    sku: 'SKU001',
-    loja: 'Tech Emporium',
-    preco_final: 1399.99,
-    data_hora: '2024-03-15T10:00:00Z',
-    marketplace: 'OnlineStore',
-    descricao: 'Advanced Laptop Pro 15"',
-    avaliacao: 4.8,
-    imagem: 'https://placehold.co/300x200.png',
-  },
-  {
-    id: 'SKU002',
-    sku: 'SKU002',
-    loja: 'Gadget Hub',
-    preco_final: 79.50,
-    data_hora: '2024-05-10T14:30:00Z',
-    marketplace: 'LocalShop',
-    descricao: 'Wireless Bluetooth Headphones',
-    avaliacao: 4.5,
-    imagem: 'https://placehold.co/300x200.png',
-  },
-  {
-    id: 'SKU003',
-    sku: 'SKU003',
-    loja: 'Home Essentials',
-    preco_final: 45.00,
-    data_hora: '2024-05-05T09:15:00Z',
-    marketplace: 'MegaMart',
-    descricao: 'Smart Coffee Maker with Timer',
-    avaliacao: 4.2,
-    imagem: 'https://placehold.co/300x200.png',
-  },
-  {
-    id: 'SKU004',
-    sku: 'SKU004',
-    loja: 'Tech Emporium',
-    preco_final: 249.00,
-    data_hora: '2024-04-20T11:00:00Z',
-    marketplace: 'OnlineStore',
-    descricao: 'Ultra HD 27" Monitor',
-    avaliacao: 4.9,
-    imagem: 'https://placehold.co/300x200.png',
-  },
-  {
-    id: 'SKU004_new',
-    sku: 'SKU004',
-    loja: 'Tech Emporium',
-    preco_final: 239.00,
-    data_hora: '2024-05-12T11:00:00Z',
-    marketplace: 'OnlineStore',
-    descricao: 'Ultra HD 27" Monitor',
-    avaliacao: 4.9,
-    imagem: 'https://placehold.co/300x200.png',
-  },
-  {
-    id: 'SKU005',
-    sku: 'SKU005',
-    loja: 'Gadget Hub',
-    preco_final: 19.99,
-    data_hora: '2024-05-11T18:00:00Z',
-    marketplace: 'LocalShop',
-    descricao: 'Portable USB Charger',
-    avaliacao: 4.0,
-    imagem: 'https://placehold.co/300x200.png',
-  },
-   {
-    id: 'SKU006',
-    sku: 'SKU006',
-    loja: 'Book Nook',
-    preco_final: 15.99,
-    data_hora: '2024-01-10T10:00:00Z',
-    marketplace: 'OnlineStore',
-    descricao: 'The Alchemist by Paulo Coelho',
-    avaliacao: 4.9,
-    imagem: 'https://placehold.co/300x200.png',
-  },
-  {
-    id: 'SKU006_new',
-    sku: 'SKU006',
-    loja: 'Book Nook',
-    preco_final: 12.99,
-    data_hora: '2024-05-13T10:00:00Z',
-    marketplace: 'OnlineStore',
-    descricao: 'The Alchemist by Paulo Coelho',
-    avaliacao: 4.9,
-    imagem: 'https://placehold.co/300x200.png',
-  }
-];
+interface ApiProduct {
+  id: string;
+  sku: string;
+  loja: string;
+  preco_original?: string;
+  preco_final: string;
+  desconto_percentual?: string;
+  data_hora: string; // Format "YYYY-MM-DD HH:MM:SS"
+  marketplace: string;
+  descricao: string;
+  avaliacao: string;
+  num_avaliacoes?: string;
+  link_produto?: string;
+  imagem: string;
+}
 
 export const fetchData = async (): Promise<Product[]> => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 500));
-  // In a real app, you would fetch from an API endpoint
-  // For example: const response = await fetch('/api/products');
-  // const data = await response.json();
-  // return data;
-  return mockProducts.map(p => ({...p, data_hora: parseISO(p.data_hora).toISOString()}));
+  // Fetch from the live API
+  const response = await fetch('https://streamlit-apirest.onrender.com/api/products/');
+  if (!response.ok) {
+    console.error(`API request failed with status ${response.status}`);
+    throw new Error(`API request failed with status ${response.status}`);
+  }
+  
+  const apiProducts: ApiProduct[] = await response.json();
+
+  // Transform API data to Product type
+  return apiProducts.map((apiProduct: ApiProduct): Product => ({
+    id: apiProduct.id,
+    sku: apiProduct.sku,
+    loja: apiProduct.loja,
+    preco_final: parseFloat(apiProduct.preco_final) || 0,
+    // Convert "YYYY-MM-DD HH:MM:SS" to ISO string "YYYY-MM-DDTHH:MM:SSZ" (assuming UTC)
+    data_hora: apiProduct.data_hora.replace(' ', 'T') + 'Z',
+    marketplace: apiProduct.marketplace,
+    descricao: apiProduct.descricao,
+    avaliacao: parseFloat(apiProduct.avaliacao) || 0,
+    imagem: apiProduct.imagem || 'https://placehold.co/300x200.png', // Fallback if image is missing
+  }));
 };
 
 export const calculateMetrics = (products: Product[]): Metrics => {
@@ -122,11 +52,22 @@ export const calculateMetrics = (products: Product[]): Metrics => {
     };
   }
 
-  const averagePrice = products.reduce((sum, p) => sum + p.preco_final, 0) / products.length;
+  // Filter out products with potentially invalid data due to parsing if needed, or ensure robust parsing
+  const validProducts = products.filter(p => !isNaN(p.preco_final) && !isNaN(p.avaliacao));
 
-  const topRatedProduct = [...products].sort((a, b) => b.avaliacao - a.avaliacao)[0] || null;
+  if (validProducts.length === 0) {
+    return {
+      averagePrice: 0,
+      topRatedProduct: null,
+      mostFrequentStore: null,
+    };
+  }
 
-  const storeCounts = products.reduce((acc, p) => {
+  const averagePrice = validProducts.reduce((sum, p) => sum + p.preco_final, 0) / validProducts.length;
+
+  const topRatedProduct = [...validProducts].sort((a, b) => b.avaliacao - a.avaliacao)[0] || null;
+
+  const storeCounts = validProducts.reduce((acc, p) => {
     acc[p.loja] = (acc[p.loja] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
@@ -153,33 +94,40 @@ export const analyzePriceTrends = (products: Product[], count: number = 3): Pric
   const priceChanges: PriceTrendProductInfo[] = [];
 
   for (const sku in productsBySku) {
+    // Sorts descending by date (latest first)
     const skuProducts = productsBySku[sku].sort((a, b) => 
-      compareDesc(parseISO(a.data_hora), parseISO(b.data_hora)) // Sorts ascending by date
+      compareDesc(parseISO(a.data_hora), parseISO(b.data_hora)) 
     );
 
     if (skuProducts.length < 2) continue;
 
-    const earliestEntry = skuProducts[0];
-    const latestEntry = skuProducts[skuProducts.length - 1];
+    const productAtLatestDate = skuProducts[0]; // Latest entry because of sort order
+    const productAtEarliestDate = skuProducts[skuProducts.length - 1]; // Earliest entry
     
     // Ensure there's a meaningful time difference for trend
-    if (differenceInDays(parseISO(latestEntry.data_hora), parseISO(earliestEntry.data_hora)) < 1) continue;
+    // And that dates are valid before parsing
+    try {
+      if (differenceInDays(parseISO(productAtLatestDate.data_hora), parseISO(productAtEarliestDate.data_hora)) < 1) continue;
+    } catch (e) {
+      console.warn(`Skipping trend analysis for SKU ${sku} due to invalid date format.`);
+      continue;
+    }
 
 
-    const priceChangePercentage = ((latestEntry.preco_final - earliestEntry.preco_final) / earliestEntry.preco_final) * 100;
+    const priceChangePercentage = ((productAtLatestDate.preco_final - productAtEarliestDate.preco_final) / productAtEarliestDate.preco_final) * 100;
 
     if (Math.abs(priceChangePercentage) > 0) { // Consider any change significant for this demo
       priceChanges.push({
-        sku: latestEntry.sku,
-        descricao: latestEntry.descricao,
-        loja: latestEntry.loja,
-        marketplace: latestEntry.marketplace,
-        earliest_price: earliestEntry.preco_final,
-        latest_price: latestEntry.preco_final,
-        earliest_date: earliestEntry.data_hora,
-        latest_date: latestEntry.data_hora,
+        sku: productAtLatestDate.sku,
+        descricao: productAtLatestDate.descricao,
+        loja: productAtLatestDate.loja,
+        marketplace: productAtLatestDate.marketplace,
+        earliest_price: productAtEarliestDate.preco_final,
+        latest_price: productAtLatestDate.preco_final,
+        earliest_date: productAtEarliestDate.data_hora,
+        latest_date: productAtLatestDate.data_hora,
         price_change_percentage: priceChangePercentage,
-        imagem: latestEntry.imagem,
+        imagem: productAtLatestDate.imagem,
       });
     }
   }
@@ -188,3 +136,4 @@ export const analyzePriceTrends = (products: Product[], count: number = 3): Pric
     .sort((a, b) => Math.abs(b.price_change_percentage) - Math.abs(a.price_change_percentage))
     .slice(0, count);
 };
+
