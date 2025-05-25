@@ -11,7 +11,8 @@ import { MetricsDashboard } from '@/components/MetricsDashboard';
 import { PriceTrendDisplay } from '@/components/PriceTrendDisplay';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Toaster } from "@/components/ui/toaster";
-import { useToast } from "@/hooks/use-toast"; // Import useToast
+import { useToast } from "@/hooks/use-toast";
+import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card"; // Import standard Card components
 
 export default function HomePage() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
@@ -19,7 +20,7 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [trendProducts, setTrendProducts] = useState<PriceTrendProductInfo[]>([]);
-  const { toast } = useToast(); // Initialize toast
+  const { toast } = useToast();
 
   useEffect(() => {
     async function loadData() {
@@ -31,17 +32,25 @@ export default function HomePage() {
         setTrendProducts(analyzePriceTrends(products));
       } catch (error) {
         console.error("Failed to load products on page:", error);
+        let description = "Não foi possível buscar os dados dos produtos. Por favor, tente novamente mais tarde.";
+        if (error instanceof Error && error.message) {
+          if (error.message.toLowerCase().includes('failed to fetch')) {
+            description = "Falha ao buscar dados da API. Isso pode ser um problema de rede, CORS, ou o servidor da API pode estar indisponível. Verifique sua conexão e a disponibilidade da API, e tente novamente.";
+          } else {
+            description = `Erro: ${error.message}. Verifique os detalhes e tente mais tarde.`;
+          }
+        }
         toast({
           variant: "destructive",
           title: "Erro ao Carregar Dados",
-          description: "Não foi possível buscar os dados dos produtos. Por favor, tente novamente mais tarde.",
+          description: description,
         });
       } finally {
         setIsLoading(false);
       }
     }
     loadData();
-  }, [toast]); // Add toast to dependency array if it's stable, or remove if not needed
+  }, [toast]);
 
   const filteredProducts = useMemo(() => {
     if (!searchTerm) return allProducts;
@@ -84,7 +93,7 @@ export default function HomePage() {
 
         <section aria-labelledby="product-list-title">
           <h2 id="product-list-title" className="text-2xl font-semibold mb-6 text-center md:text-left">Lista de Produtos</h2>
-          {isLoading && filteredProducts.length === 0 ? (
+          {isLoading && filteredProducts.length === 0 && allProducts.length === 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {[...Array(8)].map((_, i) => (
                 <Card key={i} className="shadow-lg">
@@ -117,10 +126,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-// Dummy Card components for skeleton loading, replace with actual imports if they are different
-// These should ideally be imported from "@/components/ui/card" if they are standard Card components
-const Card = ({ children, className }: { children: React.ReactNode, className?: string }) => <div className={`bg-card rounded-lg border p-4 ${className}`}>{children}</div>;
-const CardHeader = ({ children, className }: { children: React.ReactNode, className?: string }) => <div className={`pb-4 ${className}`}>{children}</div>;
-const CardContent = ({ children, className }: { children: React.ReactNode, className?: string }) => <div className={className}>{children}</div>;
-const CardFooter = ({ children, className }: { children: React.ReactNode, className?: string }) => <div className={`pt-4 ${className}`}>{children}</div>;
