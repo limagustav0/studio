@@ -1,5 +1,5 @@
 
-import type { Product, PriceTrendProductInfo, Metrics } from './types';
+import type { Product, PriceTrendProductInfo, Metrics, BuyboxWinner } from './types';
 import { parseISO, compareDesc, differenceInDays } from 'date-fns';
 
 interface ApiProduct {
@@ -42,37 +42,33 @@ export const fetchData = async (): Promise<Product[]> => {
       let currentId = apiProduct.id;
       if (!currentId || String(currentId).trim() === "") {
         // If ID is missing or empty, create a fallback.
-        // Using SKU, loja, a sanitized data_hora, and index for uniqueness.
-        const sanitizedDateTime = (apiProduct.data_hora || '').replace(/[\s:-]/g, ''); // Remove spaces, hyphens, and colons
+        const sanitizedDateTime = (apiProduct.data_hora || '').replace(/[\s:-]/g, ''); 
         currentId = `fallback-${apiProduct.sku || 'no-sku'}-${apiProduct.loja || 'no-loja'}-${sanitizedDateTime}-${index}`;
       }
       return {
-        id: String(currentId), // Ensure id is always a string
+        id: String(currentId), 
         sku: apiProduct.sku,
         loja: apiProduct.loja,
         preco_final: parseFloat(apiProduct.preco_final) || 0,
-        // Convert "YYYY-MM-DD HH:MM:SS" to ISO string "YYYY-MM-DDTHH:MM:SSZ" (assuming UTC if no tz info)
         data_hora: (apiProduct.data_hora || '').includes('T') ? (apiProduct.data_hora || '') : (apiProduct.data_hora || '').replace(' ', 'T') + 'Z',
         marketplace: apiProduct.marketplace,
         descricao: apiProduct.descricao,
         avaliacao: parseFloat(apiProduct.avaliacao) || 0,
-        imagem: apiProduct.imagem || 'https://placehold.co/300x200.png', // Fallback if image is missing
+        imagem: apiProduct.imagem || 'https://placehold.co/300x200.png', 
       };
     });
 
-  } catch (error) { // This catches network errors or errors from response.json()
+  } catch (error) { 
     console.error(`Fetch operation failed for ${apiUrl}:`, error);
     if (error instanceof Error) {
-      // Re-throw the original error to preserve its type and message for the caller
       throw error;
     }
-    // For other types of thrown values (less common with fetch)
     throw new Error('An unknown error occurred while fetching product data.');
   }
 };
 
 export const calculateMetrics = (products: Product[]): Metrics => {
-  if (products.length === 0) {
+  if (!products || products.length === 0) {
     return {
       averagePrice: 0,
       topRatedProduct: null,
@@ -80,7 +76,7 @@ export const calculateMetrics = (products: Product[]): Metrics => {
     };
   }
 
-  const validProducts = products.filter(p => p && !isNaN(p.preco_final) && !isNaN(p.avaliacao));
+  const validProducts = products.filter(p => p && typeof p.preco_final === 'number' && !isNaN(p.preco_final) && typeof p.avaliacao === 'number' && !isNaN(p.avaliacao));
 
   if (validProducts.length === 0) {
     return {
@@ -95,7 +91,9 @@ export const calculateMetrics = (products: Product[]): Metrics => {
   const topRatedProduct = [...validProducts].sort((a, b) => b.avaliacao - a.avaliacao)[0] || null;
 
   const storeCounts = validProducts.reduce((acc, p) => {
-    acc[p.loja] = (acc[p.loja] || 0) + 1;
+    if (p.loja) {
+      acc[p.loja] = (acc[p.loja] || 0) + 1;
+    }
     return acc;
   }, {} as Record<string, number>);
 
@@ -110,9 +108,10 @@ export const calculateMetrics = (products: Product[]): Metrics => {
 };
 
 export const analyzePriceTrends = (products: Product[], count: number = 3): PriceTrendProductInfo[] => {
+  if (!products || products.length === 0) return [];
   const productsBySku: Record<string, Product[]> = {};
   products.forEach(product => {
-    if (!product || !product.sku) return; // Skip if product or sku is null/undefined
+    if (!product || !product.sku) return; 
     if (!productsBySku[product.sku]) {
       productsBySku[product.sku] = [];
     }
@@ -122,12 +121,15 @@ export const analyzePriceTrends = (products: Product[], count: number = 3): Pric
   const priceChanges: PriceTrendProductInfo[] = [];
 
   for (const sku in productsBySku) {
-    // Sorts ascending by date (earliest first) then take first and last for comparison
     const skuProducts = productsBySku[sku]
-      .filter(p => p && p.data_hora) // Ensure product and data_hora exist
-      .sort((a, b) => 
-        parseISO(a.data_hora).getTime() - parseISO(b.data_hora).getTime()
-      );
+      .filter(p => p && p.data_hora && p.preco_final !== null && p.preco_final !== undefined) 
+      .sort((a, b) => {
+        try {
+          return parseISO(a.data_hora).getTime() - parseISO(b.data_hora).getTime();
+        } catch {
+          return 0; 
+        }
+      });
 
     if (skuProducts.length < 2) continue;
 
@@ -135,7 +137,6 @@ export const analyzePriceTrends = (products: Product[], count: number = 3): Pric
     const productAtLatestDate = skuProducts[skuProducts.length - 1];
     
     try {
-      // Ensure dates are valid and there's at least some difference
       const earliestDate = parseISO(productAtEarliestDate.data_hora);
       const latestDate = parseISO(productAtLatestDate.data_hora);
       if (differenceInDays(latestDate, earliestDate) < 1 && productAtEarliestDate.preco_final === productAtLatestDate.preco_final) continue;
@@ -146,7 +147,6 @@ export const analyzePriceTrends = (products: Product[], count: number = 3): Pric
 
     const priceChangePercentage = ((productAtLatestDate.preco_final - productAtEarliestDate.preco_final) / productAtEarliestDate.preco_final) * 100;
 
-    // Only include if there's an actual price change, or if you want to show all significant changes (even if 0 if dates differ)
     if (Math.abs(priceChangePercentage) > 0.001 || productAtEarliestDate.data_hora !== productAtLatestDate.data_hora) { 
       priceChanges.push({
         sku: productAtLatestDate.sku,
@@ -157,7 +157,7 @@ export const analyzePriceTrends = (products: Product[], count: number = 3): Pric
         latest_price: productAtLatestDate.preco_final,
         earliest_date: productAtEarliestDate.data_hora,
         latest_date: productAtLatestDate.data_hora,
-        price_change_percentage: priceChangePercentage,
+        price_change_percentage: isFinite(priceChangePercentage) ? priceChangePercentage : 0,
         imagem: productAtLatestDate.imagem,
       });
     }
@@ -168,3 +168,56 @@ export const analyzePriceTrends = (products: Product[], count: number = 3): Pric
     .slice(0, count);
 };
 
+export const getUniqueMarketplaces = (products: Product[]): string[] => {
+  if (!products) return [];
+  const marketplaces = new Set(products.map(p => p.marketplace).filter(Boolean));
+  return Array.from(marketplaces).sort();
+};
+
+export const getUniqueSellers = (products: Product[]): string[] => {
+  if (!products) return [];
+  const sellers = new Set(products.map(p => p.loja).filter(Boolean));
+  return Array.from(sellers).sort();
+};
+
+export const calculateBuyboxWins = (products: Product[]): BuyboxWinner[] => {
+  if (!products || products.length === 0) return [];
+
+  const productsBySku: Record<string, Product[]> = {};
+  products.forEach(product => {
+    if (!product || !product.sku || product.preco_final === null || product.preco_final === undefined) return;
+    if (!productsBySku[product.sku]) {
+      productsBySku[product.sku] = [];
+    }
+    productsBySku[product.sku].push(product);
+  });
+
+  const buyboxWinsBySeller: Record<string, number> = {};
+
+  for (const sku in productsBySku) {
+    const skuProducts = productsBySku[sku];
+    if (skuProducts.length === 0) continue;
+
+    let minPrice = skuProducts[0].preco_final;
+    skuProducts.forEach(p => {
+      if (p.preco_final < minPrice) {
+        minPrice = p.preco_final;
+      }
+    });
+
+    const winningSellersThisSku = new Set<string>();
+    skuProducts.forEach(p => {
+      if (p.preco_final === minPrice && p.loja) {
+        winningSellersThisSku.add(p.loja);
+      }
+    });
+
+    winningSellersThisSku.forEach(seller => {
+      buyboxWinsBySeller[seller] = (buyboxWinsBySeller[seller] || 0) + 1;
+    });
+  }
+
+  return Object.entries(buyboxWinsBySeller)
+    .map(([seller, wins]) => ({ seller, wins }))
+    .sort((a, b) => b.wins - a.wins);
+};

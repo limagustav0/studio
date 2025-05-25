@@ -28,3 +28,8 @@ export interface Metrics {
   topRatedProduct: Product | null;
   mostFrequentStore: { store: string; count: number } | null;
 }
+
+export interface BuyboxWinner {
+  seller: string;
+  wins: number;
+}

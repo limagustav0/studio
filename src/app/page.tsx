@@ -2,25 +2,39 @@
 "use client";
 
 import { useEffect, useState, useMemo } from 'react';
-import type { Product, PriceTrendProductInfo, Metrics } from '@/lib/types';
-import { fetchData, calculateMetrics, analyzePriceTrends } from '@/lib/data';
+import type { Product, PriceTrendProductInfo, Metrics, BuyboxWinner } from '@/lib/types';
+import { fetchData, calculateMetrics, analyzePriceTrends, getUniqueMarketplaces, getUniqueSellers, calculateBuyboxWins } from '@/lib/data';
 import { AppHeader } from '@/components/AppHeader';
 import { ProductList } from '@/components/ProductList';
 import { SearchBar } from '@/components/SearchBar';
 import { MetricsDashboard } from '@/components/MetricsDashboard';
 import { PriceTrendDisplay } from '@/components/PriceTrendDisplay';
+import { BuyboxWinnersDisplay } from '@/components/BuyboxWinnersDisplay';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card"; // Import standard Card components
+import { Card, CardHeader, CardContent, CardFooter, CardTitle, CardDescription } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function HomePage() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(''); // For overview tab general search
   const [isLoading, setIsLoading] = useState(true);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [trendProducts, setTrendProducts] = useState<PriceTrendProductInfo[]>([]);
   const { toast } = useToast();
+
+  const [activeTab, setActiveTab] = useState("overview");
+  const [selectedMarketplace, setSelectedMarketplace] = useState<string>("all");
+  const [selectedSeller, setSelectedSeller] = useState<string>("all");
+  const [skuFilter, setSkuFilter] = useState<string>(""); // For analysis tab SKU filter
+  
+  const [buyboxWinners, setBuyboxWinners] = useState<BuyboxWinner[]>([]);
+  const [uniqueMarketplaces, setUniqueMarketplaces] = useState<string[]>([]);
+  const [uniqueSellers, setUniqueSellers] = useState<string[]>([]);
 
   useEffect(() => {
     async function loadData() {
@@ -30,6 +44,9 @@ export default function HomePage() {
         setAllProducts(products);
         setMetrics(calculateMetrics(products));
         setTrendProducts(analyzePriceTrends(products));
+        setUniqueMarketplaces(getUniqueMarketplaces(products));
+        setUniqueSellers(getUniqueSellers(products));
+        setBuyboxWinners(calculateBuyboxWins(products));
       } catch (error) {
         console.error("Failed to load products on page:", error);
         let description = "Não foi possível buscar os dados dos produtos. Por favor, tente novamente mais tarde.";
@@ -52,72 +69,149 @@ export default function HomePage() {
     loadData();
   }, [toast]);
 
-  const filteredProducts = useMemo(() => {
+  // For Overview Tab
+  const overviewFilteredProducts = useMemo(() => {
     if (!searchTerm) return allProducts;
     return allProducts.filter(product =>
       product.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.loja.toLowerCase().includes(searchTerm.toLowerCase())
+      (product.loja && product.loja.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   }, [allProducts, searchTerm]);
+
+  // For Analysis Tab
+  const detailedFilteredProducts = useMemo(() => {
+    return allProducts.filter(product => {
+      const marketplaceMatch = selectedMarketplace === "all" || (product.marketplace && product.marketplace.toLowerCase() === selectedMarketplace.toLowerCase());
+      const sellerMatch = selectedSeller === "all" || (product.loja && product.loja.toLowerCase() === selectedSeller.toLowerCase());
+      const skuMatch = !skuFilter || (product.sku && product.sku.toLowerCase().includes(skuFilter.toLowerCase()));
+      return marketplaceMatch && sellerMatch && skuMatch;
+    });
+  }, [allProducts, selectedMarketplace, selectedSeller, skuFilter]);
+
+  const ProductListSkeleton = () => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      {[...Array(8)].map((_, i) => (
+        <Card key={i} className="shadow-lg">
+          <CardHeader>
+            <Skeleton className="w-full h-48 mb-4 rounded-t-lg" />
+            <Skeleton className="h-6 w-3/4 mb-2" />
+            <Skeleton className="h-4 w-1/2" />
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-2/3" />
+          </CardContent>
+          <CardFooter className="flex justify-between items-center">
+            <Skeleton className="h-8 w-1/3" />
+            <Skeleton className="h-8 w-1/4" />
+          </CardFooter>
+        </Card>
+      ))}
+    </div>
+  );
 
   return (
     <div className="min-h-screen flex flex-col">
       <AppHeader />
       <main className="flex-grow container mx-auto px-4 py-8 space-y-8">
-        <section aria-labelledby="metrics-title">
-          <h2 id="metrics-title" className="sr-only">Métricas Chave</h2>
-          {isLoading && !metrics ? <MetricsDashboard metrics={null} /> : <MetricsDashboard metrics={metrics} />}
-        </section>
-        
-        <section aria-labelledby="price-trends-title" className="mb-8">
-           <h2 id="price-trends-title" className="sr-only">Análise de Tendências de Preços</h2>
-          {isLoading && trendProducts.length === 0 ? (
-             <Card className="shadow-lg">
-              <CardHeader>
-                <Skeleton className="h-6 w-3/4 mb-2" />
-                <Skeleton className="h-4 w-1/2" />
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-6 sticky top-[calc(var(--header-height,68px)+1rem)] bg-background z-40 py-2 shadow-sm">
+            <TabsTrigger value="overview">Visão Geral</TabsTrigger>
+            <TabsTrigger value="analysis">Análise Detalhada</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-8">
+            <section aria-labelledby="metrics-title">
+              <h2 id="metrics-title" className="sr-only">Métricas Chave</h2>
+              <MetricsDashboard metrics={metrics} />
+            </section>
+            
+            <section aria-labelledby="price-trends-title" className="mb-8">
+              <h2 id="price-trends-title" className="sr-only">Análise de Tendências de Preços</h2>
+              {isLoading && trendProducts.length === 0 ? (
+                <Card className="shadow-lg">
+                  <CardHeader><Skeleton className="h-6 w-3/4 mb-2" /><Skeleton className="h-4 w-1/2" /></CardHeader>
+                  <CardContent><Skeleton className="h-40 w-full" /></CardContent>
+                </Card>
+              ) : (
+                <PriceTrendDisplay trendProducts={trendProducts} />
+              )}
+            </section>
+
+            <section aria-labelledby="search-products-title" className="mb-8">
+              <h2 id="search-products-title" className="sr-only">Pesquisar Produtos</h2>
+              <SearchBar searchTerm={searchTerm} onSearchChange={setSearchTerm} placeholder="Pesquisar por descrição ou loja..."/>
+            </section>
+
+            <section aria-labelledby="product-list-title">
+              <h2 id="product-list-title" className="text-2xl font-semibold mb-6 text-center md:text-left">Lista de Produtos</h2>
+              {isLoading && overviewFilteredProducts.length === 0 && allProducts.length === 0 ? <ProductListSkeleton /> : <ProductList products={overviewFilteredProducts} />}
+            </section>
+          </TabsContent>
+
+          <TabsContent value="analysis" className="space-y-8">
+            <Card className="shadow-lg p-2 sm:p-6">
+              <CardHeader className="pb-4 px-2 sm:px-6">
+                <CardTitle>Filtros de Análise</CardTitle>
+                <CardDescription>Refine a lista de produtos e a análise de buybox.</CardDescription>
               </CardHeader>
-              <CardContent>
-                <Skeleton className="h-40 w-full" />
+              <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 px-2 sm:px-6">
+                <div>
+                  <Label htmlFor="marketplace-filter" className="text-sm font-medium">Marketplace</Label>
+                  <Select value={selectedMarketplace} onValueChange={setSelectedMarketplace}>
+                    <SelectTrigger id="marketplace-filter" className="mt-1">
+                      <SelectValue placeholder="Todos Marketplaces" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos Marketplaces</SelectItem>
+                      {uniqueMarketplaces.map(mp => <SelectItem key={mp} value={mp}>{mp}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="seller-filter" className="text-sm font-medium">Loja (Vendedor)</Label>
+                  <Select value={selectedSeller} onValueChange={setSelectedSeller}>
+                    <SelectTrigger id="seller-filter" className="mt-1">
+                      <SelectValue placeholder="Todas Lojas" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas Lojas</SelectItem>
+                      {uniqueSellers.map(seller => <SelectItem key={seller} value={seller}>{seller}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="sku-filter" className="text-sm font-medium">SKU</Label>
+                  <Input
+                    id="sku-filter"
+                    type="text"
+                    placeholder="Filtrar por SKU..."
+                    value={skuFilter}
+                    onChange={(e) => setSkuFilter(e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
               </CardContent>
             </Card>
-          ) : (
-            <PriceTrendDisplay trendProducts={trendProducts} />
-          )}
-        </section>
 
-        <section aria-labelledby="search-products-title" className="mb-8">
-          <h2 id="search-products-title" className="sr-only">Pesquisar Produtos</h2>
-          <SearchBar searchTerm={searchTerm} onSearchChange={setSearchTerm} />
-        </section>
-
-        <section aria-labelledby="product-list-title">
-          <h2 id="product-list-title" className="text-2xl font-semibold mb-6 text-center md:text-left">Lista de Produtos</h2>
-          {isLoading && filteredProducts.length === 0 && allProducts.length === 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {[...Array(8)].map((_, i) => (
-                <Card key={i} className="shadow-lg">
-                  <CardHeader>
-                    <Skeleton className="w-full h-48 mb-4 rounded-t-lg" />
-                    <Skeleton className="h-6 w-3/4 mb-2" />
-                    <Skeleton className="h-4 w-1/2" />
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-2/3" />
-                  </CardContent>
-                  <CardFooter className="flex justify-between items-center">
-                    <Skeleton className="h-8 w-1/3" />
-                    <Skeleton className="h-8 w-1/4" />
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <ProductList products={filteredProducts} />
-          )}
-        </section>
+            <section aria-labelledby="buybox-analysis-title">
+              <h2 id="buybox-analysis-title" className="sr-only">Análise de Buybox</h2>
+              <BuyboxWinnersDisplay buyboxWinners={buyboxWinners} isLoading={isLoading && buyboxWinners.length === 0} />
+            </section>
+            
+            <section aria-labelledby="filtered-product-list-title">
+              <h2 id="filtered-product-list-title" className="text-2xl font-semibold mb-6 text-center md:text-left">Lista de Produtos (Análise)</h2>
+              {isLoading && detailedFilteredProducts.length === 0 && allProducts.length > 0 && !skuFilter && selectedMarketplace === 'all' && selectedSeller === 'all' ? (
+                 <p className="text-center text-muted-foreground py-8">Carregando produtos...</p> 
+              ) : isLoading && allProducts.length === 0 ? (
+                 <ProductListSkeleton />
+              ) : (
+                <ProductList products={detailedFilteredProducts} />
+              )}
+            </section>
+          </TabsContent>
+        </Tabs>
       </main>
       <footer className="bg-card text-card-foreground py-6 text-center text-sm">
         <p>&copy; {new Date().getFullYear()} Painel PriceWise. Todos os direitos reservados.</p>
