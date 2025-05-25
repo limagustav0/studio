@@ -1,3 +1,4 @@
+
 export interface Product {
   id: string;
   sku: string;
@@ -54,9 +55,9 @@ export interface ProductWinningBuyboxInfo {
   descricao: string;
   imagem: string;
   sellerPrice: number;
-  winningPrice: number; 
-  winningSeller: string; 
-  priceDifferenceToNext?: number | null; 
+  winningPrice: number;
+  winningSeller: string;
+  priceDifferenceToNext?: number | null;
 }
 
 export interface SellerAnalysisMetrics {
@@ -66,4 +67,5 @@ export interface SellerAnalysisMetrics {
   buyboxesLost: number;
   productsLosingBuybox: ProductLosingBuyboxInfo[];
   productsWinningBuybox: ProductWinningBuyboxInfo[];
+  lastUpdateTime: string | null;
 }

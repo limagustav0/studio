@@ -1,9 +1,12 @@
+
 import type { SellerAnalysisMetrics, ProductLosingBuyboxInfo, ProductWinningBuyboxInfo } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TrendingUp, TrendingDown, ListChecks, PackageSearch, AlertTriangle, Info, CheckCircle2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, ListChecks, PackageSearch, AlertTriangle, Info, CheckCircle2, Clock } from 'lucide-react';
 import Image from 'next/image';
+import { format as formatDate, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface SellerPerformanceDashboardProps {
   sellerMetrics: SellerAnalysisMetrics | null;
@@ -12,12 +15,23 @@ interface SellerPerformanceDashboardProps {
 }
 
 export function SellerPerformanceDashboard({ sellerMetrics, isLoading, selectedSellerName }: SellerPerformanceDashboardProps) {
+  const formatLastUpdateTime = (isoDateString: string | null) => {
+    if (!isoDateString) return 'N/A';
+    try {
+      return formatDate(parseISO(isoDateString), "dd/MM/yyyy 'às' HH:mm:ss", { locale: ptBR });
+    } catch (e) {
+      console.warn("Failed to format last update time:", e);
+      return 'Data inválida';
+    }
+  };
+  
   if (isLoading) {
     return (
       <Card className="shadow-lg w-full">
         <CardHeader>
           <Skeleton className="h-7 w-3/4 mb-2" />
           <Skeleton className="h-4 w-1/2" />
+          <Skeleton className="h-4 w-1/3 mt-1" />
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -87,6 +101,12 @@ export function SellerPerformanceDashboard({ sellerMetrics, isLoading, selectedS
         <CardHeader>
           <CardTitle className="flex items-center"><PackageSearch className="mr-2 h-5 w-5 text-primary" />Análise de Desempenho: {selectedSellerName}</CardTitle>
           <CardDescription>Este vendedor não possui produtos listados nos dados atuais.</CardDescription>
+          {sellerMetrics.lastUpdateTime && (
+            <p className="text-xs text-muted-foreground mt-1 flex items-center">
+              <Clock className="mr-1.5 h-3 w-3" />
+              Última atualização dos dados: {formatLastUpdateTime(sellerMetrics.lastUpdateTime)}
+            </p>
+          )}
         </CardHeader>
         <CardContent>
             <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
@@ -103,20 +123,18 @@ export function SellerPerformanceDashboard({ sellerMetrics, isLoading, selectedS
   }
 
 
-  const { totalProductsListed, buyboxesWon, buyboxesLost, productsLosingBuybox, productsWinningBuybox } = sellerMetrics;
+  const { totalProductsListed, buyboxesWon, buyboxesLost, productsLosingBuybox, productsWinningBuybox, lastUpdateTime } = sellerMetrics;
 
   const formatDifference = (diff: number | null | undefined) => {
     if (diff === null || diff === undefined) {
       return <span className="text-muted-foreground">Único vendedor</span>;
     }
     if (diff === 0) {
-      return <span className="text-yellow-600">Empatado com concorrente</span>;
+      return <span className="text-yellow-600">Empatado</span>;
     }
     if (diff > 0) {
       return <span className="text-green-600">Ganhando por R$ {diff.toFixed(2)}</span>;
     }
-    // This case should ideally not happen for "winning" if logic is correct,
-    // but as a fallback for priceDifferenceToNext in winning products.
     return <span className="text-red-600">Perdendo por R$ {Math.abs(diff).toFixed(2)}</span>; 
   };
 
@@ -126,6 +144,12 @@ export function SellerPerformanceDashboard({ sellerMetrics, isLoading, selectedS
       <CardHeader>
         <CardTitle className="flex items-center"><PackageSearch className="mr-2 h-5 w-5 text-primary" />Análise de Desempenho: {selectedSellerName}</CardTitle>
         <CardDescription>Métricas detalhadas sobre os produtos e buybox do vendedor selecionado.</CardDescription>
+        {lastUpdateTime && (
+          <p className="text-xs text-muted-foreground pt-1 flex items-center">
+            <Clock className="mr-1.5 h-3 w-3" />
+            Dados atualizados em: {formatLastUpdateTime(lastUpdateTime)}
+          </p>
+        )}
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
