@@ -33,13 +33,15 @@ export default function HomePage() {
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState("overview");
+  
+  // States for general filters (Marketplace, Seller, SKU) - UI removed from "Análise Detalhada" tab but state kept for now
   const [selectedMarketplace, setSelectedMarketplace] = useState<string>("all");
   const [selectedSeller, setSelectedSeller] = useState<string>("all"); 
   const [skuFilter, setSkuFilter] = useState<string>(""); 
-  
-  const [buyboxWinners, setBuyboxWinners] = useState<BuyboxWinner[]>([]);
   const [uniqueMarketplaces, setUniqueMarketplaces] = useState<string[]>([]);
   const [uniqueSellers, setUniqueSellers] = useState<string[]>([]);
+  
+  const [buyboxWinners, setBuyboxWinners] = useState<BuyboxWinner[]>([]);
 
   const [focusedSeller, setFocusedSeller] = useState<string | null>(null); 
   const [sellerPerformanceData, setSellerPerformanceData] = useState<SellerAnalysisMetrics | null>(null);
@@ -54,9 +56,9 @@ export default function HomePage() {
         setAllProducts(products);
         setMetrics(calculateMetrics(products));
         setTrendProducts(analyzePriceTrends(products));
-        setUniqueMarketplaces(getUniqueMarketplaces(products));
+        setUniqueMarketplaces(getUniqueMarketplaces(products)); // Still populated, though UI filter removed from this tab
         const sellers = getUniqueSellers(products);
-        setUniqueSellers(sellers);
+        setUniqueSellers(sellers); // Used for focusedSeller dropdown
         setBuyboxWinners(calculateBuyboxWins(products));
         
         if (focusedSeller && products.length > 0) {
@@ -85,11 +87,12 @@ export default function HomePage() {
       }
     }
     loadData();
-  }, [toast]); 
+  }, [toast]); // Removed focusedSeller from dependencies as it's handled in its own useEffect
 
   useEffect(() => {
     if (focusedSeller && allProducts.length > 0) {
       setIsSellerPerformanceLoading(true);
+      // Using a small timeout to ensure state updates are batched and UI shows loading
       setTimeout(() => {
         const performanceData = analyzeSellerPerformance(allProducts, focusedSeller);
         setSellerPerformanceData(performanceData);
@@ -110,6 +113,8 @@ export default function HomePage() {
     );
   }, [allProducts, searchTerm]);
 
+  // This memoized value is no longer directly used by a ProductList in "Análise Detalhada" tab
+  // Kept for now in case of future use or if other components might indirectly depend on its structure.
   const detailedFilteredProducts = useMemo(() => {
     return allProducts.filter(product => {
       const marketplaceMatch = selectedMarketplace === "all" || (product.marketplace && product.marketplace.toLowerCase() === selectedMarketplace.toLowerCase());
@@ -188,57 +193,9 @@ export default function HomePage() {
           </TabsContent>
 
           <TabsContent value="analysis" className="space-y-8">
-            <Card className="shadow-lg p-2 sm:p-6">
-              <CardHeader className="pb-4 px-2 sm:px-6">
-                <CardTitle>Filtros de Análise de Produtos</CardTitle>
-                <CardDescription>Refine a lista de produtos (final da página) e a análise de buybox global.</CardDescription>
-              </CardHeader>
-              <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 px-2 sm:px-6">
-                <div>
-                  <Label htmlFor="marketplace-filter" className="text-sm font-medium">Marketplace</Label>
-                  <Select value={selectedMarketplace} onValueChange={setSelectedMarketplace}>
-                    <SelectTrigger id="marketplace-filter" className="mt-1">
-                      <SelectValue placeholder="Todos Marketplaces" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos Marketplaces</SelectItem>
-                      {uniqueMarketplaces.map(mp => <SelectItem key={mp} value={mp}>{mp}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="seller-filter" className="text-sm font-medium">Loja (Vendedor)</Label>
-                  <Select value={selectedSeller} onValueChange={setSelectedSeller}>
-                    <SelectTrigger id="seller-filter" className="mt-1">
-                      <SelectValue placeholder="Todas Lojas" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todas Lojas</SelectItem>
-                      {uniqueSellers.map(seller => <SelectItem key={seller} value={seller}>{seller}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="sku-filter" className="text-sm font-medium">SKU</Label>
-                  <Input
-                    id="sku-filter"
-                    type="text"
-                    placeholder="Filtrar por SKU..."
-                    value={skuFilter}
-                    onChange={(e) => setSkuFilter(e.target.value)}
-                    className="mt-1"
-                  />
-                </div>
-              </CardContent>
-            </Card>
+            {/* Filtros de Análise de Produtos Card REMOVED */}
 
-            <section aria-labelledby="buybox-analysis-title">
-              <h2 id="buybox-analysis-title" className="sr-only">Análise de Buybox Global</h2>
-              <BuyboxWinnersDisplay buyboxWinners={buyboxWinners} isLoading={isLoading && buyboxWinners.length === 0} />
-            </section>
-            
-            <Separator className="my-8" />
-
+            {/* Seller Performance Section FIRST */}
             <section aria-labelledby="seller-performance-title" className="space-y-6">
                 <Card className="shadow-lg p-2 sm:p-6">
                     <CardHeader className="pb-4 px-2 sm:px-6">
@@ -269,18 +226,15 @@ export default function HomePage() {
                 />
             </section>
             
-            <Separator className="my-8" />
+            <Separator className="my-8" /> 
 
-            <section aria-labelledby="filtered-product-list-title">
-              <h2 id="filtered-product-list-title" className="text-2xl font-semibold mb-6 text-center md:text-left">Lista de Produtos (filtrada pelos filtros gerais no topo da aba)</h2>
-              {isLoading && detailedFilteredProducts.length === 0 && allProducts.length > 0 && !skuFilter && selectedMarketplace === 'all' && selectedSeller === 'all' ? (
-                 <p className="text-center text-muted-foreground py-8">Carregando produtos...</p> 
-              ) : isLoading && allProducts.length === 0 ? (
-                 <ProductListSkeleton />
-              ) : (
-                <ProductList products={detailedFilteredProducts} />
-              )}
+            {/* Buybox Winners Display Section MOVED HERE */}
+            <section aria-labelledby="buybox-analysis-title">
+              <h2 id="buybox-analysis-title" className="sr-only">Análise de Buybox Global</h2>
+              <BuyboxWinnersDisplay buyboxWinners={buyboxWinners} isLoading={isLoading && buyboxWinners.length === 0} />
             </section>
+            
+            {/* Separator and Filtered Product List Section REMOVED */}
           </TabsContent>
         </Tabs>
       </main>
