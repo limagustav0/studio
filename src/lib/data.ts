@@ -19,28 +19,45 @@ interface ApiProduct {
 }
 
 export const fetchData = async (): Promise<Product[]> => {
-  // Fetch from the live API
-  const response = await fetch('https://streamlit-apirest.onrender.com/api/products/');
-  if (!response.ok) {
-    console.error(`API request failed with status ${response.status}`);
-    throw new Error(`API request failed with status ${response.status}`);
-  }
-  
-  const apiProducts: ApiProduct[] = await response.json();
+  try {
+    const response = await fetch('https://streamlit-apirest.onrender.com/api/products/');
+    
+    if (!response.ok) {
+      let errorBody = '';
+      try {
+        errorBody = await response.text();
+      } catch (e) {
+        // Ignore if can't read body
+      }
+      console.error(`API request failed with status ${response.status}. Body: ${errorBody}`);
+      throw new Error(`API request failed with status ${response.status}.`);
+    }
+    
+    const apiProducts: ApiProduct[] = await response.json();
 
-  // Transform API data to Product type
-  return apiProducts.map((apiProduct: ApiProduct): Product => ({
-    id: apiProduct.id,
-    sku: apiProduct.sku,
-    loja: apiProduct.loja,
-    preco_final: parseFloat(apiProduct.preco_final) || 0,
-    // Convert "YYYY-MM-DD HH:MM:SS" to ISO string "YYYY-MM-DDTHH:MM:SSZ" (assuming UTC)
-    data_hora: apiProduct.data_hora.replace(' ', 'T') + 'Z',
-    marketplace: apiProduct.marketplace,
-    descricao: apiProduct.descricao,
-    avaliacao: parseFloat(apiProduct.avaliacao) || 0,
-    imagem: apiProduct.imagem || 'https://placehold.co/300x200.png', // Fallback if image is missing
-  }));
+    // Transform API data to Product type
+    return apiProducts.map((apiProduct: ApiProduct): Product => ({
+      id: apiProduct.id,
+      sku: apiProduct.sku,
+      loja: apiProduct.loja,
+      preco_final: parseFloat(apiProduct.preco_final) || 0,
+      // Convert "YYYY-MM-DD HH:MM:SS" to ISO string "YYYY-MM-DDTHH:MM:SSZ" (assuming UTC)
+      data_hora: apiProduct.data_hora.replace(' ', 'T') + 'Z',
+      marketplace: apiProduct.marketplace,
+      descricao: apiProduct.descricao,
+      avaliacao: parseFloat(apiProduct.avaliacao) || 0,
+      imagem: apiProduct.imagem || 'https://placehold.co/300x200.png', // Fallback if image is missing
+    }));
+
+  } catch (error) { // This catches network errors or errors from response.json()
+    console.error("Fetch operation failed in fetchData:", error);
+    if (error instanceof Error) {
+      // Re-throw the original error to preserve its type and message for the caller
+      throw error;
+    }
+    // For other types of thrown values (less common with fetch)
+    throw new Error('An unknown error occurred while fetching product data.');
+  }
 };
 
 export const calculateMetrics = (products: Product[]): Metrics => {
@@ -52,7 +69,6 @@ export const calculateMetrics = (products: Product[]): Metrics => {
     };
   }
 
-  // Filter out products with potentially invalid data due to parsing if needed, or ensure robust parsing
   const validProducts = products.filter(p => !isNaN(p.preco_final) && !isNaN(p.avaliacao));
 
   if (validProducts.length === 0) {
@@ -101,22 +117,19 @@ export const analyzePriceTrends = (products: Product[], count: number = 3): Pric
 
     if (skuProducts.length < 2) continue;
 
-    const productAtLatestDate = skuProducts[0]; // Latest entry because of sort order
-    const productAtEarliestDate = skuProducts[skuProducts.length - 1]; // Earliest entry
+    const productAtLatestDate = skuProducts[0]; 
+    const productAtEarliestDate = skuProducts[skuProducts.length - 1];
     
-    // Ensure there's a meaningful time difference for trend
-    // And that dates are valid before parsing
     try {
       if (differenceInDays(parseISO(productAtLatestDate.data_hora), parseISO(productAtEarliestDate.data_hora)) < 1) continue;
     } catch (e) {
-      console.warn(`Skipping trend analysis for SKU ${sku} due to invalid date format.`);
+      console.warn(`Skipping trend analysis for SKU ${sku} due to invalid date format or insufficient data.`);
       continue;
     }
 
-
     const priceChangePercentage = ((productAtLatestDate.preco_final - productAtEarliestDate.preco_final) / productAtEarliestDate.preco_final) * 100;
 
-    if (Math.abs(priceChangePercentage) > 0) { // Consider any change significant for this demo
+    if (Math.abs(priceChangePercentage) > 0) { 
       priceChanges.push({
         sku: productAtLatestDate.sku,
         descricao: productAtLatestDate.descricao,
@@ -136,4 +149,3 @@ export const analyzePriceTrends = (products: Product[], count: number = 3): Pric
     .sort((a, b) => Math.abs(b.price_change_percentage) - Math.abs(a.price_change_percentage))
     .slice(0, count);
 };
-

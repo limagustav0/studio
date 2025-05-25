@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useMemo } from 'react';
@@ -9,7 +10,8 @@ import { SearchBar } from '@/components/SearchBar';
 import { MetricsDashboard } from '@/components/MetricsDashboard';
 import { PriceTrendDisplay } from '@/components/PriceTrendDisplay';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Toaster } from "@/components/ui/toaster"
+import { Toaster } from "@/components/ui/toaster";
+import { useToast } from "@/hooks/use-toast"; // Import useToast
 
 export default function HomePage() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
@@ -17,6 +19,7 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [trendProducts, setTrendProducts] = useState<PriceTrendProductInfo[]>([]);
+  const { toast } = useToast(); // Initialize toast
 
   useEffect(() => {
     async function loadData() {
@@ -27,14 +30,18 @@ export default function HomePage() {
         setMetrics(calculateMetrics(products));
         setTrendProducts(analyzePriceTrends(products));
       } catch (error) {
-        console.error("Failed to fetch products:", error);
-        // Add toast notification here if desired
+        console.error("Failed to load products on page:", error);
+        toast({
+          variant: "destructive",
+          title: "Erro ao Carregar Dados",
+          description: "Não foi possível buscar os dados dos produtos. Por favor, tente novamente mais tarde.",
+        });
       } finally {
         setIsLoading(false);
       }
     }
     loadData();
-  }, []);
+  }, [toast]); // Add toast to dependency array if it's stable, or remove if not needed
 
   const filteredProducts = useMemo(() => {
     if (!searchTerm) return allProducts;
@@ -50,12 +57,12 @@ export default function HomePage() {
       <main className="flex-grow container mx-auto px-4 py-8 space-y-8">
         <section aria-labelledby="metrics-title">
           <h2 id="metrics-title" className="sr-only">Métricas Chave</h2>
-          {isLoading ? <MetricsDashboard metrics={null} /> : <MetricsDashboard metrics={metrics} />}
+          {isLoading && !metrics ? <MetricsDashboard metrics={null} /> : <MetricsDashboard metrics={metrics} />}
         </section>
         
         <section aria-labelledby="price-trends-title" className="mb-8">
            <h2 id="price-trends-title" className="sr-only">Análise de Tendências de Preços</h2>
-          {isLoading ? (
+          {isLoading && trendProducts.length === 0 ? (
              <Card className="shadow-lg">
               <CardHeader>
                 <Skeleton className="h-6 w-3/4 mb-2" />
@@ -77,7 +84,7 @@ export default function HomePage() {
 
         <section aria-labelledby="product-list-title">
           <h2 id="product-list-title" className="text-2xl font-semibold mb-6 text-center md:text-left">Lista de Produtos</h2>
-          {isLoading ? (
+          {isLoading && filteredProducts.length === 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {[...Array(8)].map((_, i) => (
                 <Card key={i} className="shadow-lg">
@@ -112,8 +119,8 @@ export default function HomePage() {
 }
 
 // Dummy Card components for skeleton loading, replace with actual imports if they are different
+// These should ideally be imported from "@/components/ui/card" if they are standard Card components
 const Card = ({ children, className }: { children: React.ReactNode, className?: string }) => <div className={`bg-card rounded-lg border p-4 ${className}`}>{children}</div>;
 const CardHeader = ({ children, className }: { children: React.ReactNode, className?: string }) => <div className={`pb-4 ${className}`}>{children}</div>;
 const CardContent = ({ children, className }: { children: React.ReactNode, className?: string }) => <div className={className}>{children}</div>;
 const CardFooter = ({ children, className }: { children: React.ReactNode, className?: string }) => <div className={`pt-4 ${className}`}>{children}</div>;
-
