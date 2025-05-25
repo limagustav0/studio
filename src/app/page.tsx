@@ -15,22 +15,22 @@ import { Label } from "@/components/ui/label";
 import { Separator } from '@/components/ui/separator';
 
 const NO_SELLER_SELECTED_VALUE = "--none--";
+const DEFAULT_SELLER_FOCUS = "HAIRPRO";
 
 export default function HomePage() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true); // For general page data loading
   const { toast } = useToast();
   
   const [uniqueSellers, setUniqueSellers] = useState<string[]>([]);
   const [buyboxWinners, setBuyboxWinners] = useState<BuyboxWinner[]>([]);
   const [focusedSeller, setFocusedSeller] = useState<string | null>(null); 
   const [sellerPerformanceData, setSellerPerformanceData] = useState<SellerAnalysisMetrics | null>(null);
-  const [isSellerPerformanceLoading, setIsSellerPerformanceLoading] = useState<boolean>(false);
+  const [isSellerPerformanceLoading, setIsSellerPerformanceLoading] = useState<boolean>(false); // Specifically for seller performance section
 
   useEffect(() => {
     async function loadData() {
       setIsLoading(true);
-      setIsSellerPerformanceLoading(true); 
       try {
         const products = await fetchData();
         setAllProducts(products);
@@ -38,9 +38,13 @@ export default function HomePage() {
         setUniqueSellers(sellers);
         setBuyboxWinners(calculateBuyboxWins(products));
         
-        if (focusedSeller && products.length > 0) {
-          const performanceData = analyzeSellerPerformance(products, focusedSeller);
-          setSellerPerformanceData(performanceData);
+        // Set default focused seller if it exists in the list
+        if (sellers.includes(DEFAULT_SELLER_FOCUS)) {
+          setFocusedSeller(DEFAULT_SELLER_FOCUS);
+        } else {
+          // If default is not found, ensure no seller is focused initially
+          // or if a previously focused seller (like default) is no longer valid.
+          setFocusedSeller(null); 
         }
 
       } catch (error) {
@@ -58,27 +62,35 @@ export default function HomePage() {
           title: "Erro ao Carregar Dados",
           description: description,
         });
+        // Clear data on error to prevent displaying stale info
+        setAllProducts([]);
+        setUniqueSellers([]);
+        setBuyboxWinners([]);
+        setFocusedSeller(null);
       } finally {
         setIsLoading(false);
-        setIsSellerPerformanceLoading(false); 
       }
     }
     loadData();
-  }, [toast]); // Removed focusedSeller from dependencies as it's handled in another useEffect
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [toast]); // `toast` is stable, so this effect runs primarily on mount.
 
   useEffect(() => {
+    // This effect handles loading seller-specific performance data
+    // whenever `focusedSeller` or `allProducts` changes.
     if (focusedSeller && allProducts.length > 0) {
       setIsSellerPerformanceLoading(true);
-      // Simulate a small delay if needed for UI feedback, or remove if direct update is fine
+      // Using a small timeout can help UI responsiveness if analysis is heavy,
+      // but can be removed if analysis is quick.
       setTimeout(() => {
         const performanceData = analyzeSellerPerformance(allProducts, focusedSeller);
         setSellerPerformanceData(performanceData);
         setIsSellerPerformanceLoading(false);
-      }, 50); // Small delay to allow UI to update if necessary, or can be 0
+      }, 50); 
     } else if (!focusedSeller) { 
-      // If no seller is focused, clear the performance data
+      // If no seller is focused (or selection is cleared), clear performance data
       setSellerPerformanceData(null);
-      setIsSellerPerformanceLoading(false); // Ensure loading is false
+      setIsSellerPerformanceLoading(false); // Ensure loading state is false
     }
   }, [focusedSeller, allProducts]);
 
@@ -86,7 +98,7 @@ export default function HomePage() {
     <div className="min-h-screen flex flex-col bg-background">
       <AppHeader />
       <main className="flex-grow container mx-auto px-4 py-8 space-y-8">
-        <div className="space-y-8"> {/* Replaces TabsContent */}
+        <div className="space-y-8">
           <section aria-labelledby="seller-performance-title" className="space-y-6">
               <Card className="shadow-lg p-2 sm:p-6">
                   <CardHeader className="pb-4 px-2 sm:px-6">
@@ -112,7 +124,7 @@ export default function HomePage() {
 
               <SellerPerformanceDashboard 
                   sellerMetrics={sellerPerformanceData} 
-                  isLoading={isSellerPerformanceLoading || (isLoading && !allProducts.length)} 
+                  isLoading={isSellerPerformanceLoading || (isLoading && !allProducts.length)} // Show loading if seller data is loading OR initial page data is loading
                   selectedSellerName={focusedSeller}
               />
           </section>
