@@ -35,7 +35,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/api/price-data', // This is the path your app will fetch from
-        destination: 'http://34.233.35.91:8000/api/products/', // This is the actual external API
+        destination: 'https://www.price.kamico.com.br/api/products/', // This is the actual external API
       },
     ];
   },
