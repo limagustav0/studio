@@ -8,97 +8,100 @@ body {
 
 @layer base {
   :root {
-    --background: 350 5% 25%; /* from #463E3F */
-    --foreground: 60 27% 96%; /* from #EFEEE8 */
+    /* Cyberpunk-inspired theme */
+    --background: 220 13% 8%;    /* Very dark blue/black */
+    --foreground: 210 40% 98%;   /* Almost white, slightly cool */
 
-    --card: 350 5% 30%; /* Slightly lighter than background */
-    --card-foreground: 60 27% 96%; /* from #EFEEE8 */
+    --card: 220 13% 12%;         /* Slightly lighter dark blue for cards */
+    --card-foreground: 210 40% 95%;
 
-    --popover: 350 5% 30%;
-    --popover-foreground: 60 27% 96%;
+    --popover: 220 13% 10%;       /* Darker popover */
+    --popover-foreground: 210 40% 95%;
 
-    --primary: 349 98% 45%; /* from #E2042A */
-    --primary-foreground: 60 27% 96%; /* from #EFEEE8, for good contrast on vibrant red */
+    --primary: 180 90% 50%;       /* Bright Cyan */
+    --primary-foreground: 220 13% 5%; /* Dark for contrast on cyan */
 
-    --secondary: 350 5% 40%; /* Lighter gray */
-    --secondary-foreground: 60 27% 96%;
+    --secondary: 220 10% 20%;     /* Dark muted blue/gray */
+    --secondary-foreground: 180 80% 85%; /* Lighter cyan for text on secondary */
 
-    --muted: 350 5% 35%; /* Mid-gray for muted elements */
-    --muted-foreground: 60 15% 80%; /* Slightly dimmer #EFEEE8 for muted text */
+    --muted: 220 10% 15%;         /* Muted dark blue/gray */
+    --muted-foreground: 210 20% 65%; /* Dimmed white/gray */
 
-    --accent: 350 86% 57%; /* from #F03554 */
-    --accent-foreground: 350 5% 25%; /* from #463E3F, for better contrast on lighter red */
+    --accent: 300 90% 60%;        /* Bright Magenta/Pink */
+    --accent-foreground: 210 40% 98%; /* White for contrast on magenta */
 
-    --destructive: 349 98% 45%; /* Same as primary - #E2042A */
-    --destructive-foreground: 60 27% 96%; /* from #EFEEE8 */
+    --destructive: 0 80% 60%;       /* Standard vibrant red for destructive actions */
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 350 5% 32%; /* Subtle border */
-    --input: 350 5% 28%; /* Slightly different from card for input fields */
-    --ring: 349 98% 45%; /* Primary color for focus rings */
+    --border: 180 50% 30%;        /* Cyan-ish border, less saturated */
+    --input: 220 13% 15%;         /* Dark input background */
+    --ring: 180 90% 60%;          /* Bright Cyan for focus rings */
     
-    --chart-1: 349 98% 45%; /* primary - #E2042A */
-    --chart-2: 350 86% 57%; /* accent - #F03554 */
-    --chart-3: 349 70% 55%; /* desaturated primary */
-    --chart-4: 350 60% 65%; /* desaturated accent */
-    --chart-5: 350 5% 50%;  /* a lighter gray from the theme */
+    --chart-1: 180 90% 50%;       /* Bright Cyan */
+    --chart-2: 300 90% 60%;       /* Bright Magenta */
+    --chart-3: 180 70% 40%;       /* Darker Cyan */
+    --chart-4: 300 70% 50%;       /* Darker Magenta */
+    --chart-5: 210 20% 50%;       /* Muted Gray-Blue */
 
     --radius: 0.5rem;
 
     /* Sidebar variables - consistent with the new theme */
-    --sidebar-background: 350 5% 22%; /* Slightly darker than main background for sidebar */
-    --sidebar-foreground: 60 27% 96%;
-    --sidebar-primary: 349 98% 45%;
-    --sidebar-primary-foreground: 60 27% 96%;
-    --sidebar-accent: 350 86% 57%;
-    --sidebar-accent-foreground: 350 5% 25%;
-    --sidebar-border: 350 5% 28%;
-    --sidebar-ring: 349 98% 45%;
+    --sidebar-background: 220 13% 6%; /* Even darker for sidebar */
+    --sidebar-foreground: 180 80% 85%;
+    --sidebar-primary: 180 90% 50%;
+    --sidebar-primary-foreground: 220 13% 5%;
+    --sidebar-accent: 300 90% 60%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 180 50% 20%;
+    --sidebar-ring: 180 90% 60%;
   }
 
   .dark {
-    /* :root is already a dark theme. .dark can be identical or offer slight variations. */
-    --background: 350 5% 25%;
-    --foreground: 60 27% 96%;
+    /* In this case, the :root is already a dark theme. 
+       .dark can be identical or offer slight variations if needed for a "super dark" mode.
+       For simplicity, we'll keep it mostly the same. */
+    --background: 220 13% 8%;
+    --foreground: 210 40% 98%;
 
-    --card: 350 5% 30%;
-    --card-foreground: 60 27% 96%;
+    --card: 220 13% 12%;
+    --card-foreground: 210 40% 95%;
 
-    --popover: 350 5% 30%;
-    --popover-foreground: 60 27% 96%;
+    --popover: 220 13% 10%;
+    --popover-foreground: 210 40% 95%;
 
-    --primary: 349 98% 45%;
-    --primary-foreground: 60 27% 96%;
+    --primary: 180 90% 50%;
+    --primary-foreground: 220 13% 5%;
 
-    --secondary: 350 5% 40%;
-    --secondary-foreground: 60 27% 96%;
+    --secondary: 220 10% 20%;
+    --secondary-foreground: 180 80% 85%;
 
-    --muted: 350 5% 35%;
-    --muted-foreground: 60 15% 80%;
+    --muted: 220 10% 15%;
+    --muted-foreground: 210 20% 65%;
 
-    --accent: 350 86% 57%;
-    --accent-foreground: 350 5% 25%;
+    --accent: 300 90% 60%;
+    --accent-foreground: 210 40% 98%;
 
-    --destructive: 349 98% 45%; 
-    --destructive-foreground: 60 27% 96%;
+    --destructive: 0 80% 60%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 350 5% 32%;
-    --input: 350 5% 28%;
-    --ring: 349 98% 45%;
+    --border: 180 50% 30%;
+    --input: 220 13% 15%;
+    --ring: 180 90% 60%;
     
-    --chart-1: 349 98% 45%;
-    --chart-2: 350 86% 57%;
-    --chart-3: 349 70% 55%;
-    --chart-4: 350 60% 65%;
-    --chart-5: 350 5% 50%;
+    --chart-1: 180 90% 50%;
+    --chart-2: 300 90% 60%;
+    --chart-3: 180 70% 40%;
+    --chart-4: 300 70% 50%;
+    --chart-5: 210 20% 50%;
 
-    --sidebar-background: 350 5% 22%;
-    --sidebar-foreground: 60 27% 96%;
-    --sidebar-primary: 349 98% 45%;
-    --sidebar-primary-foreground: 60 27% 96%;
-    --sidebar-accent: 350 86% 57%;
-    --sidebar-accent-foreground: 350 5% 25%;
-    --sidebar-border: 350 5% 28%;
-    --sidebar-ring: 349 98% 45%;
+    --sidebar-background: 220 13% 6%;
+    --sidebar-foreground: 180 80% 85%;
+    --sidebar-primary: 180 90% 50%;
+    --sidebar-primary-foreground: 220 13% 5%;
+    --sidebar-accent: 300 90% 60%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 180 50% 20%;
+    --sidebar-ring: 180 90% 60%;
   }
 }
 
