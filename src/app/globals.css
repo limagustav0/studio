@@ -8,99 +8,97 @@ body {
 
 @layer base {
   :root {
-    /* Cyberpunk-inspired: Black background, White text, Cyan primary, Magenta accent */
-    --background: 0 0% 0%; /* Black */
-    --foreground: 0 0% 100%; /* White */
+    --background: 350 5% 25%; /* from #463E3F */
+    --foreground: 60 27% 96%; /* from #EFEEE8 */
 
-    --card: 0 0% 7%; /* Very Dark Gray for cards */
-    --card-foreground: 0 0% 100%; /* White text on cards */
+    --card: 350 5% 30%; /* Slightly lighter than background */
+    --card-foreground: 60 27% 96%; /* from #EFEEE8 */
 
-    --popover: 0 0% 7%; /* Popovers same as cards */
-    --popover-foreground: 0 0% 100%;
+    --popover: 350 5% 30%;
+    --popover-foreground: 60 27% 96%;
 
-    --primary: 180 100% 50%; /* Bright Cyan */
-    --primary-foreground: 0 0% 0%; /* Black text on bright primary */
+    --primary: 349 98% 45%; /* from #E2042A */
+    --primary-foreground: 60 27% 96%; /* from #EFEEE8, for good contrast on vibrant red */
 
-    --secondary: 0 0% 15%; /* Dark Gray for secondary elements */
-    --secondary-foreground: 0 0% 100%; /* White text on secondary */
+    --secondary: 350 5% 40%; /* Lighter gray */
+    --secondary-foreground: 60 27% 96%;
 
-    --muted: 0 0% 10%; /* Darker Gray for muted elements */
-    --muted-foreground: 0 0% 65%; /* Lighter Gray for muted text */
+    --muted: 350 5% 35%; /* Mid-gray for muted elements */
+    --muted-foreground: 60 15% 80%; /* Slightly dimmer #EFEEE8 for muted text */
 
-    --accent: 300 100% 50%; /* Bright Magenta */
-    --accent-foreground: 0 0% 0%; /* Black text on bright accent */
+    --accent: 350 86% 57%; /* from #F03554 */
+    --accent-foreground: 350 5% 25%; /* from #463E3F, for better contrast on lighter red */
 
-    --destructive: 0 84.2% 60.2%; /* Default Red - might need adjustment for contrast */
-    --destructive-foreground: 0 0% 100%; /* White text on destructive */
+    --destructive: 349 98% 45%; /* Same as primary - #E2042A */
+    --destructive-foreground: 60 27% 96%; /* from #EFEEE8 */
 
-    --border: 0 0% 15%; /* Dark Gray border */
-    --input: 0 0% 10%; /* Dark Gray input background */
-    --ring: 180 100% 50%; /* Cyan for focus rings */
+    --border: 350 5% 32%; /* Subtle border */
+    --input: 350 5% 28%; /* Slightly different from card for input fields */
+    --ring: 349 98% 45%; /* Primary color for focus rings */
     
-    --chart-1: 180 100% 50%; /* Cyan */
-    --chart-2: 300 100% 50%; /* Magenta */
-    --chart-3: 210 100% 60%; /* A bright blue */
-    --chart-4: 270 100% 65%; /* A bright purple */
-    --chart-5: 330 100% 65%; /* A bright pink */
+    --chart-1: 349 98% 45%; /* primary - #E2042A */
+    --chart-2: 350 86% 57%; /* accent - #F03554 */
+    --chart-3: 349 70% 55%; /* desaturated primary */
+    --chart-4: 350 60% 65%; /* desaturated accent */
+    --chart-5: 350 5% 50%;  /* a lighter gray from the theme */
 
     --radius: 0.5rem;
 
-    /* Sidebar variables - consistent with the new dark theme */
-    --sidebar-background: 0 0% 4%; /* Slightly off-black for sidebar */
-    --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 180 100% 50%;
-    --sidebar-primary-foreground: 0 0% 0%;
-    --sidebar-accent: 300 100% 50%;
-    --sidebar-accent-foreground: 0 0% 0%;
-    --sidebar-border: 0 0% 10%;
-    --sidebar-ring: 180 100% 50%;
+    /* Sidebar variables - consistent with the new theme */
+    --sidebar-background: 350 5% 22%; /* Slightly darker than main background for sidebar */
+    --sidebar-foreground: 60 27% 96%;
+    --sidebar-primary: 349 98% 45%;
+    --sidebar-primary-foreground: 60 27% 96%;
+    --sidebar-accent: 350 86% 57%;
+    --sidebar-accent-foreground: 350 5% 25%;
+    --sidebar-border: 350 5% 28%;
+    --sidebar-ring: 349 98% 45%;
   }
 
   .dark {
     /* :root is already a dark theme. .dark can be identical or offer slight variations. */
-    /* For simplicity, keeping it identical to :root as :root is already dark. */
-    --background: 0 0% 0%;
-    --foreground: 0 0% 100%;
+    --background: 350 5% 25%;
+    --foreground: 60 27% 96%;
 
-    --card: 0 0% 7%;
-    --card-foreground: 0 0% 100%;
+    --card: 350 5% 30%;
+    --card-foreground: 60 27% 96%;
 
-    --popover: 0 0% 7%;
-    --popover-foreground: 0 0% 100%;
+    --popover: 350 5% 30%;
+    --popover-foreground: 60 27% 96%;
 
-    --primary: 180 100% 50%;
-    --primary-foreground: 0 0% 0%;
+    --primary: 349 98% 45%;
+    --primary-foreground: 60 27% 96%;
 
-    --secondary: 0 0% 15%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 350 5% 40%;
+    --secondary-foreground: 60 27% 96%;
 
-    --muted: 0 0% 10%;
-    --muted-foreground: 0 0% 65%;
+    --muted: 350 5% 35%;
+    --muted-foreground: 60 15% 80%;
 
-    --accent: 300 100% 50%;
-    --accent-foreground: 0 0% 0%;
+    --accent: 350 86% 57%;
+    --accent-foreground: 350 5% 25%;
 
-    --destructive: 0 70% 55%; /* Slightly adjusted destructive for consistency */
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 349 98% 45%; 
+    --destructive-foreground: 60 27% 96%;
 
-    --border: 0 0% 15%;
-    --input: 0 0% 10%;
-    --ring: 180 100% 50%;
+    --border: 350 5% 32%;
+    --input: 350 5% 28%;
+    --ring: 349 98% 45%;
     
-    --chart-1: 180 100% 50%;
-    --chart-2: 300 100% 50%;
-    --chart-3: 210 100% 60%;
-    --chart-4: 270 100% 65%;
-    --chart-5: 330 100% 65%;
+    --chart-1: 349 98% 45%;
+    --chart-2: 350 86% 57%;
+    --chart-3: 349 70% 55%;
+    --chart-4: 350 60% 65%;
+    --chart-5: 350 5% 50%;
 
-    --sidebar-background: 0 0% 4%;
-    --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 180 100% 50%;
-    --sidebar-primary-foreground: 0 0% 0%;
-    --sidebar-accent: 300 100% 50%;
-    --sidebar-accent-foreground: 0 0% 0%;
-    --sidebar-border: 0 0% 10%;
-    --sidebar-ring: 180 100% 50%;
+    --sidebar-background: 350 5% 22%;
+    --sidebar-foreground: 60 27% 96%;
+    --sidebar-primary: 349 98% 45%;
+    --sidebar-primary-foreground: 60 27% 96%;
+    --sidebar-accent: 350 86% 57%;
+    --sidebar-accent-foreground: 350 5% 25%;
+    --sidebar-border: 350 5% 28%;
+    --sidebar-ring: 349 98% 45%;
   }
 }
 
