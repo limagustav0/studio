@@ -211,7 +211,7 @@ export function SellerPerformanceDashboard({ sellerMetrics, isLoading, selectedS
                     <TableHead className="text-right">Preço Vencedor</TableHead>
                     <TableHead>Vencedor do Buybox</TableHead>
                     <TableHead className="text-right">Diferença</TableHead>
-                    <TableHead className="text-right">Data e Hora</TableHead>
+                    <TableHead className="text-right">Ultima raspagem</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -266,7 +266,7 @@ export function SellerPerformanceDashboard({ sellerMetrics, isLoading, selectedS
                       <TableHead className="text-right">Preço Vencedor</TableHead>
                       <TableHead>Vencedor do Buybox</TableHead>
                       <TableHead className="text-right">Diferença</TableHead>
-                      <TableHead className="text-right">Data e Hora</TableHead>
+                      <TableHead className="text-right">Ultima raspagem</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -310,4 +310,3 @@ export function SellerPerformanceDashboard({ sellerMetrics, isLoading, selectedS
     </Card>
   );
 }
-
