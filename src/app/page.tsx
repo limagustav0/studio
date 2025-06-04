@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from 'react';
-import type { Product, BuyboxWinner, SellerAnalysisMetrics, UniqueProductSummary } from '@/lib/types'; 
+import type { Product, BuyboxWinner, SellerAnalysisMetrics, UniqueProductSummary } from '@/lib/types';
 import { fetchData, getUniqueSellers, calculateBuyboxWins, analyzeSellerPerformance, getUniqueMarketplaces, generateUniqueProductSummaries } from '@/lib/data';
 import { AppHeader } from '@/components/AppHeader';
 import { BuyboxWinnersDisplay } from '@/components/BuyboxWinnersDisplay';
@@ -18,8 +18,10 @@ import { Label } from "@/components/ui/label";
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Filter, List, BarChartBig, Search, Package, LayoutGrid } from 'lucide-react';
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 
-const NO_SELLER_SELECTED_VALUE = "--none--";
 const ALL_MARKETPLACES_OPTION_VALUE = "--all-marketplaces--";
 const DEFAULT_SELLER_FOCUS = "HAIRPRO";
 
@@ -27,7 +29,7 @@ export default function HomePage() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
-  
+
   // Common state for marketplace lists
   const [uniqueMarketplaces, setUniqueMarketplaces] = useState<string[]>([]);
 
@@ -35,8 +37,8 @@ export default function HomePage() {
   const [analysis_selectedMarketplace, setAnalysis_selectedMarketplace] = useState<string | null>(null);
   const [uniqueSellersForAnalysis, setUniqueSellersForAnalysis] = useState<string[]>([]);
   const [buyboxWinners, setBuyboxWinners] = useState<BuyboxWinner[]>([]);
-  const [focusedSeller, setFocusedSeller] = useState<string | null>(null); 
-  const [sellerPerformanceData, setSellerPerformanceData] = useState<SellerAnalysisMetrics | null>(null);
+  const [analysis_selectedSellers, setAnalysis_selectedSellers] = useState<string[]>([]);
+  const [analysis_sellerPerformanceData, setAnalysis_sellerPerformanceData] = useState<SellerAnalysisMetrics[]>([]);
   const [isSellerPerformanceLoading, setIsSellerPerformanceLoading] = useState<boolean>(false);
 
   // State for "Todos os Produtos" Tab
@@ -55,17 +57,13 @@ export default function HomePage() {
       try {
         const products = await fetchData();
         setAllProducts(products);
-        
+
         const marketplaces = getUniqueMarketplaces(products);
         setUniqueMarketplaces(marketplaces);
-        
+
         const initialSellers = getUniqueSellers(products);
         setUniqueSellersForAnalysis(initialSellers);
-        if (initialSellers.includes(DEFAULT_SELLER_FOCUS)) {
-          setFocusedSeller(DEFAULT_SELLER_FOCUS);
-        } else {
-          setFocusedSeller(null);
-        }
+        // Initial seller selection logic moved to the effect that depends on analysis_productsFilteredByMarketplace
 
         setUniqueProductSummaries(generateUniqueProductSummaries(products));
 
@@ -88,7 +86,7 @@ export default function HomePage() {
         setUniqueMarketplaces([]);
         setUniqueSellersForAnalysis([]);
         setBuyboxWinners([]);
-        setFocusedSeller(null);
+        setAnalysis_selectedSellers([]);
         setUniqueProductSummaries([]);
       } finally {
         setIsLoading(false);
@@ -106,36 +104,53 @@ export default function HomePage() {
     return allProducts.filter(p => p.marketplace === analysis_selectedMarketplace);
   }, [allProducts, analysis_selectedMarketplace]);
 
-  // Effects for "Análise Detalhada" Tab
+  // Effects for "Análise Detalhada" Tab - Seller list and default selection
   useEffect(() => {
     const currentMarketplaceSellers = getUniqueSellers(analysis_productsFilteredByMarketplace);
     setUniqueSellersForAnalysis(currentMarketplaceSellers);
 
-    if (focusedSeller && !currentMarketplaceSellers.includes(focusedSeller)) {
-        setFocusedSeller(null);
-        setSellerPerformanceData(null); 
-    } else if (!focusedSeller && currentMarketplaceSellers.includes(DEFAULT_SELLER_FOCUS) && (analysis_selectedMarketplace === null || analysis_selectedMarketplace === ALL_MARKETPLACES_OPTION_VALUE)) {
-         setFocusedSeller(DEFAULT_SELLER_FOCUS);
-    } else if (focusedSeller && !currentMarketplaceSellers.includes(focusedSeller)) {
-        setFocusedSeller(null);
-    }
+    setAnalysis_selectedSellers(prevSelectedSellers => {
+      const stillValidSelectedSellers = prevSelectedSellers.filter(s => currentMarketplaceSellers.includes(s));
+      if (stillValidSelectedSellers.length > 0) {
+        return stillValidSelectedSellers;
+      }
+      if (currentMarketplaceSellers.includes(DEFAULT_SELLER_FOCUS)) {
+        return [DEFAULT_SELLER_FOCUS];
+      }
+      return [];
+    });
 
     setBuyboxWinners(calculateBuyboxWins(analysis_productsFilteredByMarketplace));
+  }, [analysis_productsFilteredByMarketplace]);
 
-  }, [analysis_productsFilteredByMarketplace, focusedSeller, analysis_selectedMarketplace]); 
 
-
+  // Effect for Seller Performance Data (now for multiple sellers)
   useEffect(() => {
-    if (focusedSeller && analysis_productsFilteredByMarketplace.length > 0) {
+    if (analysis_selectedSellers.length > 0 && analysis_productsFilteredByMarketplace.length > 0) {
       setIsSellerPerformanceLoading(true);
-      const performanceData = analyzeSellerPerformance(analysis_productsFilteredByMarketplace, focusedSeller);
-      setSellerPerformanceData(performanceData);
-      setIsSellerPerformanceLoading(false);
-    } else if (!focusedSeller) { 
-      setSellerPerformanceData(null);
+      const promises = analysis_selectedSellers.map(sellerName =>
+        analyzeSellerPerformance(analysis_productsFilteredByMarketplace, sellerName)
+      );
+      Promise.all(promises)
+        .then(results => {
+          setAnalysis_sellerPerformanceData(results.filter(r => r !== null) as SellerAnalysisMetrics[]);
+          setIsSellerPerformanceLoading(false);
+        })
+        .catch(error => {
+          console.error("Error fetching seller performance data for multiple sellers:", error);
+          toast({
+            variant: "destructive",
+            title: "Erro ao Carregar Análise de Vendedor",
+            description: "Não foi possível buscar os dados de desempenho para os vendedores selecionados.",
+          });
+          setAnalysis_sellerPerformanceData([]);
+          setIsSellerPerformanceLoading(false);
+        });
+    } else {
+      setAnalysis_sellerPerformanceData([]);
       setIsSellerPerformanceLoading(false);
     }
-  }, [focusedSeller, analysis_productsFilteredByMarketplace]);
+  }, [analysis_selectedSellers, analysis_productsFilteredByMarketplace, toast]);
 
 
   const handleAnalysisMarketplaceChange = (value: string) => {
@@ -153,7 +168,7 @@ export default function HomePage() {
 
     if (allProductsTab_searchTerm) {
       const lowerSearchTerm = allProductsTab_searchTerm.toLowerCase();
-      filtered = filtered.filter(p => 
+      filtered = filtered.filter(p =>
         p.descricao.toLowerCase().includes(lowerSearchTerm) ||
         p.sku.toLowerCase().includes(lowerSearchTerm) ||
         p.loja.toLowerCase().includes(lowerSearchTerm)
@@ -166,7 +181,7 @@ export default function HomePage() {
     const newMarketplace = value === ALL_MARKETPLACES_OPTION_VALUE ? null : value;
     setAllProductsTab_selectedMarketplace(newMarketplace);
   };
-  
+
   const productCountMessage = useMemo(() => {
     const count = allProductsTab_filteredProducts.length;
     if (allProductsTab_selectedMarketplace && allProductsTab_selectedMarketplace !== ALL_MARKETPLACES_OPTION_VALUE) {
@@ -204,7 +219,7 @@ export default function HomePage() {
     const newMarketplace = value === ALL_MARKETPLACES_OPTION_VALUE ? null : value;
     setOverviewTab_selectedMarketplace(newMarketplace);
   };
-  
+
   const overviewProductCountMessage = useMemo(() => {
     const count = overviewTab_filteredSummaries.length;
     let message = `Exibindo ${count} SKU(s) único(s)`;
@@ -247,8 +262,8 @@ export default function HomePage() {
                 </CardHeader>
                 <CardContent className="px-2 sm:px-6">
                     <Label htmlFor="analysis-marketplace-filter" className="text-sm font-medium">Filtrar por Marketplace</Label>
-                    <Select 
-                        value={analysis_selectedMarketplace || ALL_MARKETPLACES_OPTION_VALUE} 
+                    <Select
+                        value={analysis_selectedMarketplace || ALL_MARKETPLACES_OPTION_VALUE}
                         onValueChange={handleAnalysisMarketplaceChange}
                     >
                         <SelectTrigger id="analysis-marketplace-filter" className="mt-1">
@@ -266,43 +281,60 @@ export default function HomePage() {
                 <Card className="shadow-lg p-2 sm:p-6">
                     <CardHeader className="pb-4 px-2 sm:px-6">
                         <CardTitle>Análise de Desempenho por Vendedor</CardTitle>
-                        <CardDescription>Selecione um vendedor para ver suas métricas detalhadas de buybox e produtos, considerando o filtro de marketplace acima (se aplicado).</CardDescription>
+                        <CardDescription>Selecione um ou mais vendedores para ver suas métricas detalhadas, considerando o filtro de marketplace acima.</CardDescription>
                     </CardHeader>
                     <CardContent className="px-2 sm:px-6">
-                        <Label htmlFor="focused-seller-filter" className="text-sm font-medium">Selecionar Vendedor para Análise Detalhada</Label>
-                        <Select 
-                            value={focusedSeller || NO_SELLER_SELECTED_VALUE} 
-                            onValueChange={(value) => setFocusedSeller(value === NO_SELLER_SELECTED_VALUE ? null : value)}
-                            disabled={isLoading || uniqueSellersForAnalysis.length === 0}
-                        >
-                            <SelectTrigger id="focused-seller-filter" className="mt-1">
-                            <SelectValue placeholder={uniqueSellersForAnalysis.length === 0 && !isLoading ? "Nenhum vendedor com os filtros atuais" : "Selecione um vendedor..."} />
-                            </SelectTrigger>
-                            <SelectContent>
-                            <SelectItem value={NO_SELLER_SELECTED_VALUE}>Nenhum (Limpar Seleção)</SelectItem>
-                            {uniqueSellersForAnalysis.map(seller => <SelectItem key={`focused-${seller}`} value={seller}>{seller}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                        {uniqueSellersForAnalysis.length === 0 && !isLoading && analysis_productsFilteredByMarketplace.length > 0 && (
-                            <p className="text-xs text-muted-foreground mt-2">Nenhum vendedor encontrado para o marketplace selecionado.</p>
+                        <Label className="text-sm font-medium">Selecionar Vendedor(es) para Análise Detalhada</Label>
+                        {(isLoading && uniqueSellersForAnalysis.length === 0 && allProducts.length > 0) || (isSellerPerformanceLoading && analysis_selectedSellers.length > 0) ? (
+                          <div className="mt-1 space-y-2">
+                            {[...Array(3)].map((_, i) => <Skeleton key={`skel-seller-${i}`} className="h-8 w-full" />)}
+                          </div>
+                        ) : uniqueSellersForAnalysis.length === 0 && !isLoading ? (
+                            <p className="text-xs text-muted-foreground mt-2">
+                                Nenhum vendedor encontrado para o marketplace selecionado.
+                            </p>
+                        ) : (
+                          <ScrollArea className="h-40 w-full rounded-md border p-4 mt-1">
+                            <div className="space-y-2">
+                              {uniqueSellersForAnalysis.map((seller) => (
+                                <div key={seller} className="flex items-center space-x-2">
+                                  <Checkbox
+                                    id={`seller-checkbox-${seller}`}
+                                    checked={analysis_selectedSellers.includes(seller)}
+                                    onCheckedChange={(checked) => {
+                                      setAnalysis_selectedSellers((prev) =>
+                                        checked
+                                          ? [...prev, seller]
+                                          : prev.filter((s) => s !== seller)
+                                      );
+                                    }}
+                                    aria-label={`Selecionar vendedor ${seller}`}
+                                  />
+                                  <Label htmlFor={`seller-checkbox-${seller}`} className="text-sm font-normal cursor-pointer">
+                                    {seller}
+                                  </Label>
+                                </div>
+                              ))}
+                            </div>
+                          </ScrollArea>
                         )}
                     </CardContent>
                 </Card>
 
-                <SellerPerformanceDashboard 
-                    sellerMetrics={sellerPerformanceData} 
-                    isLoading={isSellerPerformanceLoading || (isLoading && !allProducts.length)}
-                    selectedSellerName={focusedSeller}
+                <SellerPerformanceDashboard
+                    performanceMetricsList={analysis_sellerPerformanceData}
+                    isLoading={isSellerPerformanceLoading || (isLoading && !allProducts.length && analysis_selectedSellers.length === 0) }
+                    selectedSellersCount={analysis_selectedSellers.length}
                 />
             </section>
-            
-            <Separator className="my-8" /> 
+
+            <Separator className="my-8" />
 
             <section aria-labelledby="buybox-analysis-title">
               <h2 id="buybox-analysis-title" className="sr-only">Análise de Buybox (Considerando Filtro de Análise)</h2>
               <BuyboxWinnersDisplay buyboxWinners={buyboxWinners} isLoading={isLoading && buyboxWinners.length === 0 && analysis_productsFilteredByMarketplace.length > 0} />
               {(isLoading && analysis_productsFilteredByMarketplace.length === 0 && allProducts.length > 0) && <p className="text-center text-muted-foreground">Carregando dados de buybox...</p>}
-              {(!isLoading && analysis_productsFilteredByMarketplace.length === 0 && allProducts.length > 0) && 
+              {(!isLoading && analysis_productsFilteredByMarketplace.length === 0 && allProducts.length > 0) &&
                 <Card className="shadow-lg">
                   <CardHeader>
                     <CardTitle>Vencedores de Buybox por Loja</CardTitle>
@@ -349,9 +381,9 @@ export default function HomePage() {
             <div className="text-sm text-muted-foreground mb-4">
               {overviewProductCountMessage}
             </div>
-            
+
             <ProductSummaryTable summaries={overviewTab_filteredSummaries} isLoading={isLoading && uniqueProductSummaries.length === 0} />
-            
+
           </TabsContent>
 
           <TabsContent value="all-products" className="space-y-6">
@@ -363,8 +395,8 @@ export default function HomePage() {
                 <CardContent className="px-2 sm:px-6 space-y-4">
                     <div>
                         <Label htmlFor="allProducts-marketplace-filter" className="text-sm font-medium">Filtrar por Marketplace</Label>
-                        <Select 
-                            value={allProductsTab_selectedMarketplace || ALL_MARKETPLACES_OPTION_VALUE} 
+                        <Select
+                            value={allProductsTab_selectedMarketplace || ALL_MARKETPLACES_OPTION_VALUE}
                             onValueChange={handleAllProductsMarketplaceChange}
                         >
                             <SelectTrigger id="allProducts-marketplace-filter" className="mt-1">
@@ -378,15 +410,15 @@ export default function HomePage() {
                     </div>
                      <div>
                         <Label htmlFor="allProducts-search" className="text-sm font-medium">Pesquisar Produtos</Label>
-                        <SearchBar 
-                            searchTerm={allProductsTab_searchTerm} 
-                            onSearchChange={setAllProductsTab_searchTerm} 
+                        <SearchBar
+                            searchTerm={allProductsTab_searchTerm}
+                            onSearchChange={setAllProductsTab_searchTerm}
                             placeholder="Pesquisar por descrição, SKU ou loja..."
                         />
                     </div>
                 </CardContent>
             </Card>
-            
+
             <div className="text-sm text-muted-foreground mb-4">
                 {productCountMessage}
             </div>
@@ -406,3 +438,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+    
