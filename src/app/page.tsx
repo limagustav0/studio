@@ -7,13 +7,16 @@ import { fetchData, getUniqueSellers, calculateBuyboxWins, analyzeSellerPerforma
 import { AppHeader } from '@/components/AppHeader';
 import { BuyboxWinnersDisplay } from '@/components/BuyboxWinnersDisplay';
 import { SellerPerformanceDashboard } from '@/components/SellerPerformanceDashboard';
+import { ProductList } from '@/components/ProductList';
+import { SearchBar } from '@/components/SearchBar';
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Separator } from '@/components/ui/separator';
-import { Filter } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Filter, List, BarChartBig, Search, Package } from 'lucide-react';
 
 const NO_SELLER_SELECTED_VALUE = "--none--";
 const ALL_MARKETPLACES_OPTION_VALUE = "--all-marketplaces--";
@@ -24,14 +27,20 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   
-  const [uniqueSellers, setUniqueSellers] = useState<string[]>([]);
+  // Common state
+  const [uniqueMarketplaces, setUniqueMarketplaces] = useState<string[]>([]);
+
+  // State for "Análise Detalhada" Tab
+  const [analysis_selectedMarketplace, setAnalysis_selectedMarketplace] = useState<string | null>(null);
+  const [uniqueSellersForAnalysis, setUniqueSellersForAnalysis] = useState<string[]>([]);
   const [buyboxWinners, setBuyboxWinners] = useState<BuyboxWinner[]>([]);
   const [focusedSeller, setFocusedSeller] = useState<string | null>(null); 
   const [sellerPerformanceData, setSellerPerformanceData] = useState<SellerAnalysisMetrics | null>(null);
   const [isSellerPerformanceLoading, setIsSellerPerformanceLoading] = useState<boolean>(false);
 
-  const [selectedMarketplace, setSelectedMarketplace] = useState<string | null>(null);
-  const [uniqueMarketplaces, setUniqueMarketplaces] = useState<string[]>([]);
+  // State for "Todos os Produtos" Tab
+  const [allProductsTab_selectedMarketplace, setAllProductsTab_selectedMarketplace] = useState<string | null>(null);
+  const [allProductsTab_searchTerm, setAllProductsTab_searchTerm] = useState<string>('');
 
   useEffect(() => {
     async function loadInitialData() {
@@ -43,10 +52,10 @@ export default function HomePage() {
         const marketplaces = getUniqueMarketplaces(products);
         setUniqueMarketplaces(marketplaces);
         
-        // Initial seller list and focused seller based on all products initially
-        // This will be refined by marketplace filter effect later
+        // Initial seller list and focused seller based on all products initially (for analysis tab)
+        // This will be refined by analysis marketplace filter effect later
         const initialSellers = getUniqueSellers(products);
-        setUniqueSellers(initialSellers);
+        setUniqueSellersForAnalysis(initialSellers);
         if (initialSellers.includes(DEFAULT_SELLER_FOCUS)) {
           setFocusedSeller(DEFAULT_SELLER_FOCUS);
         } else {
@@ -70,7 +79,7 @@ export default function HomePage() {
         });
         setAllProducts([]);
         setUniqueMarketplaces([]);
-        setUniqueSellers([]);
+        setUniqueSellersForAnalysis([]);
         setBuyboxWinners([]);
         setFocusedSeller(null);
       } finally {
@@ -81,137 +90,225 @@ export default function HomePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toast]);
 
-  const productsFilteredByMarketplace = useMemo(() => {
-    if (!selectedMarketplace || selectedMarketplace === ALL_MARKETPLACES_OPTION_VALUE) {
+  // Memoized products for "Análise Detalhada" Tab
+  const analysis_productsFilteredByMarketplace = useMemo(() => {
+    if (!analysis_selectedMarketplace || analysis_selectedMarketplace === ALL_MARKETPLACES_OPTION_VALUE) {
       return allProducts;
     }
-    return allProducts.filter(p => p.marketplace === selectedMarketplace);
-  }, [allProducts, selectedMarketplace]);
+    return allProducts.filter(p => p.marketplace === analysis_selectedMarketplace);
+  }, [allProducts, analysis_selectedMarketplace]);
 
+  // Effects for "Análise Detalhada" Tab
   useEffect(() => {
-    // Update unique sellers based on marketplace filter
-    const currentMarketplaceSellers = getUniqueSellers(productsFilteredByMarketplace);
-    setUniqueSellers(currentMarketplaceSellers);
+    const currentMarketplaceSellers = getUniqueSellers(analysis_productsFilteredByMarketplace);
+    setUniqueSellersForAnalysis(currentMarketplaceSellers);
 
-    // Reset focused seller if no longer valid or set default
     if (focusedSeller && !currentMarketplaceSellers.includes(focusedSeller)) {
         setFocusedSeller(null);
-        setSellerPerformanceData(null); // Clear performance data if focused seller is invalidated
-    } else if (!focusedSeller && currentMarketplaceSellers.includes(DEFAULT_SELLER_FOCUS)) {
-        // If no seller is focused, but default exists in new list, set it.
-        // This might re-focus on default when marketplace changes, consider user experience.
-        // For now, let's stick to invalidating if current focused is gone.
-        // setFocusedSeller(DEFAULT_SELLER_FOCUS);
-    } else if (focusedSeller && currentMarketplaceSellers.includes(focusedSeller)) {
-      // Focused seller is still valid, do nothing to focusedSeller state here
-      // Performance data will be re-calculated by its own effect
+        setSellerPerformanceData(null); 
+    } else if (!focusedSeller && currentMarketplaceSellers.includes(DEFAULT_SELLER_FOCUS) && analysis_selectedMarketplace === null) {
+        // Only auto-focus DEFAULT_SELLER_FOCUS if no marketplace filter is applied or if it's present with the filter
+         setFocusedSeller(DEFAULT_SELLER_FOCUS);
+    } else if (focusedSeller && !currentMarketplaceSellers.includes(focusedSeller)) {
+        setFocusedSeller(null); // Clear focused seller if no longer in the filtered list
     }
 
 
-    // Update buybox winners based on marketplace filter
-    setBuyboxWinners(calculateBuyboxWins(productsFilteredByMarketplace));
+    setBuyboxWinners(calculateBuyboxWins(analysis_productsFilteredByMarketplace));
 
-  }, [productsFilteredByMarketplace, focusedSeller]); // Removed toast from deps as it's stable
+  }, [analysis_productsFilteredByMarketplace, focusedSeller]); 
 
 
   useEffect(() => {
-    if (focusedSeller && productsFilteredByMarketplace.length > 0) {
+    if (focusedSeller && analysis_productsFilteredByMarketplace.length > 0) {
       setIsSellerPerformanceLoading(true);
-      setTimeout(() => {
-        const performanceData = analyzeSellerPerformance(productsFilteredByMarketplace, focusedSeller);
-        setSellerPerformanceData(performanceData);
-        setIsSellerPerformanceLoading(false);
-      }, 50); 
+      // Simulate a small delay if needed, or remove for direct calculation
+      const performanceData = analyzeSellerPerformance(analysis_productsFilteredByMarketplace, focusedSeller);
+      setSellerPerformanceData(performanceData);
+      setIsSellerPerformanceLoading(false);
     } else if (!focusedSeller) { 
       setSellerPerformanceData(null);
       setIsSellerPerformanceLoading(false);
     }
-  }, [focusedSeller, productsFilteredByMarketplace]);
+  }, [focusedSeller, analysis_productsFilteredByMarketplace]);
 
 
-  const handleMarketplaceChange = (value: string) => {
+  const handleAnalysisMarketplaceChange = (value: string) => {
     const newMarketplace = value === ALL_MARKETPLACES_OPTION_VALUE ? null : value;
-    setSelectedMarketplace(newMarketplace);
-    // Focused seller logic is handled in the effect watching productsFilteredByMarketplace
+    setAnalysis_selectedMarketplace(newMarketplace);
   };
+
+  // Memoized products for "Todos os Produtos" Tab
+  const allProductsTab_filteredProducts = useMemo(() => {
+    let filtered = allProducts;
+
+    if (allProductsTab_selectedMarketplace && allProductsTab_selectedMarketplace !== ALL_MARKETPLACES_OPTION_VALUE) {
+      filtered = filtered.filter(p => p.marketplace === allProductsTab_selectedMarketplace);
+    }
+
+    if (allProductsTab_searchTerm) {
+      const lowerSearchTerm = allProductsTab_searchTerm.toLowerCase();
+      filtered = filtered.filter(p => 
+        p.descricao.toLowerCase().includes(lowerSearchTerm) ||
+        p.sku.toLowerCase().includes(lowerSearchTerm) ||
+        p.loja.toLowerCase().includes(lowerSearchTerm)
+      );
+    }
+    return filtered;
+  }, [allProducts, allProductsTab_selectedMarketplace, allProductsTab_searchTerm]);
+
+  const handleAllProductsMarketplaceChange = (value: string) => {
+    const newMarketplace = value === ALL_MARKETPLACES_OPTION_VALUE ? null : value;
+    setAllProductsTab_selectedMarketplace(newMarketplace);
+  };
+  
+  const productCountMessage = useMemo(() => {
+    const count = allProductsTab_filteredProducts.length;
+    if (allProductsTab_selectedMarketplace && allProductsTab_selectedMarketplace !== ALL_MARKETPLACES_OPTION_VALUE) {
+      return `Exibindo ${count} produto(s) para o marketplace "${allProductsTab_selectedMarketplace}".`;
+    }
+    if(allProductsTab_searchTerm && (!allProductsTab_selectedMarketplace || allProductsTab_selectedMarketplace === ALL_MARKETPLACES_OPTION_VALUE)) {
+         return `Exibindo ${count} produto(s) correspondente(s) à pesquisa em todos os marketplaces.`;
+    }
+     if(allProductsTab_searchTerm && allProductsTab_selectedMarketplace && allProductsTab_selectedMarketplace !== ALL_MARKETPLACES_OPTION_VALUE) {
+         return `Exibindo ${count} produto(s) correspondente(s) à pesquisa para o marketplace "${allProductsTab_selectedMarketplace}".`;
+    }
+    return `Exibindo ${count} produto(s) (todos os marketplaces).`;
+  }, [allProductsTab_filteredProducts, allProductsTab_selectedMarketplace, allProductsTab_searchTerm]);
 
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <AppHeader />
       <main className="flex-grow container mx-auto px-4 py-8 space-y-8">
-        
-        <Card className="shadow-lg p-2 sm:p-6">
-            <CardHeader className="pb-4 px-2 sm:px-6">
-                <CardTitle className="flex items-center"><Filter className="mr-2 h-5 w-5 text-primary" />Filtro Global</CardTitle>
-                <CardDescription>Aplique filtros para refinar os dados exibidos em toda a análise.</CardDescription>
-            </CardHeader>
-            <CardContent className="px-2 sm:px-6">
-                <Label htmlFor="marketplace-filter" className="text-sm font-medium">Filtrar por Marketplace</Label>
-                <Select 
-                    value={selectedMarketplace || ALL_MARKETPLACES_OPTION_VALUE} 
-                    onValueChange={handleMarketplaceChange}
-                >
-                    <SelectTrigger id="marketplace-filter" className="mt-1">
-                    <SelectValue placeholder="Selecione um marketplace..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                    <SelectItem value={ALL_MARKETPLACES_OPTION_VALUE}>Todos os Marketplaces</SelectItem>
-                    {uniqueMarketplaces.map(mp => <SelectItem key={`mp-filter-${mp}`} value={mp}>{mp}</SelectItem>)}
-                    </SelectContent>
-                </Select>
-            </CardContent>
-        </Card>
+        <Tabs defaultValue="analysis" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsTrigger value="analysis" className="py-3 text-base">
+                <BarChartBig className="mr-2 h-5 w-5" /> Análise Detalhada
+            </TabsTrigger>
+            <TabsTrigger value="all-products" className="py-3 text-base">
+                <Package className="mr-2 h-5 w-5" /> Todos os Produtos
+            </TabsTrigger>
+          </TabsList>
 
-        <section aria-labelledby="seller-performance-title" className="space-y-6">
+          <TabsContent value="analysis" className="space-y-8">
             <Card className="shadow-lg p-2 sm:p-6">
                 <CardHeader className="pb-4 px-2 sm:px-6">
-                    <CardTitle>Análise de Desempenho por Vendedor</CardTitle>
-                    <CardDescription>Selecione um vendedor para ver suas métricas detalhadas de buybox e produtos, considerando o filtro de marketplace acima (se aplicado).</CardDescription>
+                    <CardTitle className="flex items-center"><Filter className="mr-2 h-5 w-5 text-primary" />Filtro para Análise</CardTitle>
+                    <CardDescription>Aplique filtros para refinar os dados exibidos nas seções de Análise de Desempenho e Vencedores de Buybox abaixo.</CardDescription>
                 </CardHeader>
                 <CardContent className="px-2 sm:px-6">
-                    <Label htmlFor="focused-seller-filter" className="text-sm font-medium">Selecionar Vendedor para Análise Detalhada</Label>
+                    <Label htmlFor="analysis-marketplace-filter" className="text-sm font-medium">Filtrar por Marketplace</Label>
                     <Select 
-                        value={focusedSeller || NO_SELLER_SELECTED_VALUE} 
-                        onValueChange={(value) => setFocusedSeller(value === NO_SELLER_SELECTED_VALUE ? null : value)}
-                        disabled={isLoading || uniqueSellers.length === 0}
+                        value={analysis_selectedMarketplace || ALL_MARKETPLACES_OPTION_VALUE} 
+                        onValueChange={handleAnalysisMarketplaceChange}
                     >
-                        <SelectTrigger id="focused-seller-filter" className="mt-1">
-                        <SelectValue placeholder={uniqueSellers.length === 0 && !isLoading ? "Nenhum vendedor encontrado com os filtros atuais" : "Selecione um vendedor..."} />
+                        <SelectTrigger id="analysis-marketplace-filter" className="mt-1">
+                        <SelectValue placeholder="Selecione um marketplace..." />
                         </SelectTrigger>
                         <SelectContent>
-                        <SelectItem value={NO_SELLER_SELECTED_VALUE}>Nenhum (Limpar Seleção)</SelectItem>
-                        {uniqueSellers.map(seller => <SelectItem key={`focused-${seller}`} value={seller}>{seller}</SelectItem>)}
+                        <SelectItem value={ALL_MARKETPLACES_OPTION_VALUE}>Todos os Marketplaces</SelectItem>
+                        {uniqueMarketplaces.map(mp => <SelectItem key={`mp-filter-analysis-${mp}`} value={mp}>{mp}</SelectItem>)}
                         </SelectContent>
                     </Select>
-                     {uniqueSellers.length === 0 && !isLoading && productsFilteredByMarketplace.length > 0 && (
-                        <p className="text-xs text-muted-foreground mt-2">Nenhum vendedor encontrado para o marketplace selecionado.</p>
-                    )}
                 </CardContent>
             </Card>
 
-            <SellerPerformanceDashboard 
-                sellerMetrics={sellerPerformanceData} 
-                isLoading={isSellerPerformanceLoading || (isLoading && !allProducts.length)}
-                selectedSellerName={focusedSeller}
-            />
-        </section>
-        
-        <Separator className="my-8" /> 
+            <section aria-labelledby="seller-performance-title" className="space-y-6">
+                <Card className="shadow-lg p-2 sm:p-6">
+                    <CardHeader className="pb-4 px-2 sm:px-6">
+                        <CardTitle>Análise de Desempenho por Vendedor</CardTitle>
+                        <CardDescription>Selecione um vendedor para ver suas métricas detalhadas de buybox e produtos, considerando o filtro de marketplace acima (se aplicado).</CardDescription>
+                    </CardHeader>
+                    <CardContent className="px-2 sm:px-6">
+                        <Label htmlFor="focused-seller-filter" className="text-sm font-medium">Selecionar Vendedor para Análise Detalhada</Label>
+                        <Select 
+                            value={focusedSeller || NO_SELLER_SELECTED_VALUE} 
+                            onValueChange={(value) => setFocusedSeller(value === NO_SELLER_SELECTED_VALUE ? null : value)}
+                            disabled={isLoading || uniqueSellersForAnalysis.length === 0}
+                        >
+                            <SelectTrigger id="focused-seller-filter" className="mt-1">
+                            <SelectValue placeholder={uniqueSellersForAnalysis.length === 0 && !isLoading ? "Nenhum vendedor com os filtros atuais" : "Selecione um vendedor..."} />
+                            </SelectTrigger>
+                            <SelectContent>
+                            <SelectItem value={NO_SELLER_SELECTED_VALUE}>Nenhum (Limpar Seleção)</SelectItem>
+                            {uniqueSellersForAnalysis.map(seller => <SelectItem key={`focused-${seller}`} value={seller}>{seller}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                        {uniqueSellersForAnalysis.length === 0 && !isLoading && analysis_productsFilteredByMarketplace.length > 0 && (
+                            <p className="text-xs text-muted-foreground mt-2">Nenhum vendedor encontrado para o marketplace selecionado.</p>
+                        )}
+                    </CardContent>
+                </Card>
 
-        <section aria-labelledby="buybox-analysis-title">
-          <h2 id="buybox-analysis-title" className="sr-only">Análise de Buybox Global</h2>
-          <BuyboxWinnersDisplay buyboxWinners={buyboxWinners} isLoading={isLoading && buyboxWinners.length === 0 && productsFilteredByMarketplace.length > 0} />
-           {(isLoading && productsFilteredByMarketplace.length === 0 && allProducts.length > 0) && <p className="text-center text-muted-foreground">Carregando dados de buybox...</p>}
-           {(!isLoading && productsFilteredByMarketplace.length === 0 && allProducts.length > 0) && 
-            <Card className="shadow-lg">
-              <CardHeader>
-                <CardTitle>Vencedores de Buybox por Loja</CardTitle>
-                <CardDescription>Nenhum produto encontrado para o marketplace selecionado.</CardDescription>
-              </CardHeader>
+                <SellerPerformanceDashboard 
+                    sellerMetrics={sellerPerformanceData} 
+                    isLoading={isSellerPerformanceLoading || (isLoading && !allProducts.length)}
+                    selectedSellerName={focusedSeller}
+                />
+            </section>
+            
+            <Separator className="my-8" /> 
+
+            <section aria-labelledby="buybox-analysis-title">
+              <h2 id="buybox-analysis-title" className="sr-only">Análise de Buybox (Considerando Filtro de Análise)</h2>
+              <BuyboxWinnersDisplay buyboxWinners={buyboxWinners} isLoading={isLoading && buyboxWinners.length === 0 && analysis_productsFilteredByMarketplace.length > 0} />
+              {(isLoading && analysis_productsFilteredByMarketplace.length === 0 && allProducts.length > 0) && <p className="text-center text-muted-foreground">Carregando dados de buybox...</p>}
+              {(!isLoading && analysis_productsFilteredByMarketplace.length === 0 && allProducts.length > 0) && 
+                <Card className="shadow-lg">
+                  <CardHeader>
+                    <CardTitle>Vencedores de Buybox por Loja</CardTitle>
+                    <CardDescription>Nenhum produto encontrado para o marketplace selecionado no filtro de análise.</CardDescription>
+                  </CardHeader>
+                </Card>
+              }
+            </section>
+          </TabsContent>
+
+          <TabsContent value="all-products" className="space-y-6">
+            <Card className="shadow-lg p-2 sm:p-6">
+                <CardHeader className="pb-4 px-2 sm:px-6">
+                    <CardTitle className="flex items-center"><Filter className="mr-2 h-5 w-5 text-primary" />Filtros para Lista de Produtos</CardTitle>
+                    <CardDescription>Filtre a lista de todos os produtos abaixo por marketplace e/ou termo de pesquisa.</CardDescription>
+                </CardHeader>
+                <CardContent className="px-2 sm:px-6 space-y-4">
+                    <div>
+                        <Label htmlFor="allProducts-marketplace-filter" className="text-sm font-medium">Filtrar por Marketplace</Label>
+                        <Select 
+                            value={allProductsTab_selectedMarketplace || ALL_MARKETPLACES_OPTION_VALUE} 
+                            onValueChange={handleAllProductsMarketplaceChange}
+                        >
+                            <SelectTrigger id="allProducts-marketplace-filter" className="mt-1">
+                            <SelectValue placeholder="Selecione um marketplace..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                            <SelectItem value={ALL_MARKETPLACES_OPTION_VALUE}>Todos os Marketplaces</SelectItem>
+                            {uniqueMarketplaces.map(mp => <SelectItem key={`mp-filter-allProducts-${mp}`} value={mp}>{mp}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                     <div>
+                        <Label htmlFor="allProducts-search" className="text-sm font-medium">Pesquisar Produtos</Label>
+                        <SearchBar 
+                            searchTerm={allProductsTab_searchTerm} 
+                            onSearchChange={setAllProductsTab_searchTerm} 
+                            placeholder="Pesquisar por descrição, SKU ou loja..."
+                        />
+                    </div>
+                </CardContent>
             </Card>
-           }
-        </section>
+            
+            <div className="text-sm text-muted-foreground mb-4">
+                {productCountMessage}
+            </div>
+
+            {isLoading && allProducts.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">Carregando produtos...</p>
+            ) : (
+                <ProductList products={allProductsTab_filteredProducts} />
+            )}
+          </TabsContent>
+        </Tabs>
       </main>
       <footer className="bg-card text-card-foreground py-6 text-center text-sm border-t">
         <p>&copy; {new Date().getFullYear()} Monitoramento KAMI PRICING. Todos os direitos reservados.</p>
@@ -221,3 +318,4 @@ export default function HomePage() {
   );
 }
 
+    
