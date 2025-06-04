@@ -242,14 +242,14 @@ export default function HomePage() {
       <AppHeader />
       <main className="flex-grow container mx-auto px-4 py-8 space-y-8">
         <Tabs defaultValue="analysis" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-6">
-            <TabsTrigger value="analysis" className="py-3 text-base">
+          <TabsList className="grid w-full grid-cols-3 mb-6 bg-card p-1 rounded-lg">
+            <TabsTrigger value="analysis" className="py-3 text-base hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg">
                 <BarChartBig className="mr-2 h-5 w-5" /> Análise Detalhada
             </TabsTrigger>
-            <TabsTrigger value="product-overview" className="py-3 text-base">
+            <TabsTrigger value="product-overview" className="py-3 text-base hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg">
                 <LayoutGrid className="mr-2 h-5 w-5" /> Visão Geral do Produto
             </TabsTrigger>
-            <TabsTrigger value="all-products" className="py-3 text-base">
+            <TabsTrigger value="all-products" className="py-3 text-base hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg">
                 <Package className="mr-2 h-5 w-5" /> Todos os Produtos
             </TabsTrigger>
           </TabsList>
