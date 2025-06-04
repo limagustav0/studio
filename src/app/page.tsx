@@ -17,10 +17,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Filter, List, BarChartBig, Search, Package, LayoutGrid } from 'lucide-react';
-import { Checkbox } from "@/components/ui/checkbox";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Filter, List, BarChartBig, Search, Package, LayoutGrid, ChevronDown } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
 
 const ALL_MARKETPLACES_OPTION_VALUE = "--all-marketplaces--";
 const DEFAULT_SELLER_FOCUS = "HAIRPRO";
@@ -63,6 +65,7 @@ export default function HomePage() {
 
         const initialSellers = getUniqueSellers(products);
         setUniqueSellersForAnalysis(initialSellers);
+        
         // Initial seller selection logic moved to the effect that depends on analysis_productsFilteredByMarketplace
 
         setUniqueProductSummaries(generateUniqueProductSummaries(products));
@@ -236,6 +239,16 @@ export default function HomePage() {
     return message;
   }, [overviewTab_filteredSummaries, overviewTab_selectedMarketplace, overviewTab_searchTerm]);
 
+  const getSelectedSellersText = () => {
+    if (analysis_selectedSellers.length === 0) {
+      return "Selecione Vendedor(es)...";
+    }
+    if (analysis_selectedSellers.length <= 2) {
+      return analysis_selectedSellers.join(', ');
+    }
+    return `${analysis_selectedSellers.slice(0, 2).join(', ')} + ${analysis_selectedSellers.length - 2} mais`;
+  };
+
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -284,39 +297,44 @@ export default function HomePage() {
                         <CardDescription>Selecione um ou mais vendedores para ver suas métricas detalhadas, considerando o filtro de marketplace acima.</CardDescription>
                     </CardHeader>
                     <CardContent className="px-2 sm:px-6">
-                        <Label className="text-sm font-medium">Selecionar Vendedor(es) para Análise Detalhada</Label>
-                        {(isLoading && uniqueSellersForAnalysis.length === 0 && allProducts.length > 0) || (isSellerPerformanceLoading && analysis_selectedSellers.length > 0) ? (
-                          <div className="mt-1 space-y-2">
-                            {[...Array(3)].map((_, i) => <Skeleton key={`skel-seller-${i}`} className="h-8 w-full" />)}
-                          </div>
+                        <Label className="text-sm font-medium mb-1 block">Selecionar Vendedor(es) para Análise Detalhada</Label>
+                         {(isLoading && uniqueSellersForAnalysis.length === 0 && allProducts.length > 0) || (isSellerPerformanceLoading && analysis_selectedSellers.length > 0 && uniqueSellersForAnalysis.length === 0) ? (
+                            <Skeleton className="h-10 w-full mt-1" />
                         ) : uniqueSellersForAnalysis.length === 0 && !isLoading ? (
                             <p className="text-xs text-muted-foreground mt-2">
                                 Nenhum vendedor encontrado para o marketplace selecionado.
                             </p>
                         ) : (
-                          <ScrollArea className="h-40 w-full rounded-md border p-4 mt-1">
-                            <div className="space-y-2">
-                              {uniqueSellersForAnalysis.map((seller) => (
-                                <div key={seller} className="flex items-center space-x-2">
-                                  <Checkbox
-                                    id={`seller-checkbox-${seller}`}
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" className="w-full justify-between mt-1">
+                                <span className="truncate pr-2">{getSelectedSellersText()}</span>
+                                <ChevronDown className="h-4 w-4 opacity-50" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
+                                <DropdownMenuLabel>Vendedores Disponíveis</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <ScrollArea className="h-[200px]">
+                                {uniqueSellersForAnalysis.map((seller) => (
+                                <DropdownMenuCheckboxItem
+                                    key={seller}
                                     checked={analysis_selectedSellers.includes(seller)}
                                     onCheckedChange={(checked) => {
-                                      setAnalysis_selectedSellers((prev) =>
+                                    setAnalysis_selectedSellers((prev) =>
                                         checked
-                                          ? [...prev, seller]
-                                          : prev.filter((s) => s !== seller)
-                                      );
+                                        ? [...prev, seller]
+                                        : prev.filter((s) => s !== seller)
+                                    );
                                     }}
-                                    aria-label={`Selecionar vendedor ${seller}`}
-                                  />
-                                  <Label htmlFor={`seller-checkbox-${seller}`} className="text-sm font-normal cursor-pointer">
+                                    onSelect={(e) => e.preventDefault()} // Keep menu open
+                                >
                                     {seller}
-                                  </Label>
-                                </div>
-                              ))}
-                            </div>
-                          </ScrollArea>
+                                </DropdownMenuCheckboxItem>
+                                ))}
+                                </ScrollArea>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                         )}
                     </CardContent>
                 </Card>
