@@ -12,12 +12,12 @@ import { ProductSummaryTable } from '@/components/ProductSummaryTable';
 import { SearchBar } from '@/components/SearchBar';
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardHeader, CardContent, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Filter, List, BarChartBig, Search, Package, LayoutGrid, ChevronDown } from 'lucide-react';
+import { Filter, List, BarChartBig, Search, Package, LayoutGrid, ChevronDown, Users } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -66,8 +66,6 @@ export default function HomePage() {
         const initialSellers = getUniqueSellers(products);
         setUniqueSellersForAnalysis(initialSellers);
         
-        // Initial seller selection logic moved to the effect that depends on analysis_productsFilteredByMarketplace
-
         setUniqueProductSummaries(generateUniqueProductSummaries(products));
 
       } catch (error) {
@@ -120,7 +118,7 @@ export default function HomePage() {
       if (currentMarketplaceSellers.includes(DEFAULT_SELLER_FOCUS)) {
         return [DEFAULT_SELLER_FOCUS];
       }
-      return [];
+      return []; // Default to empty if HAIRPRO not found and no previous valid selections
     });
 
     setBuyboxWinners(calculateBuyboxWins(analysis_productsFilteredByMarketplace));
@@ -150,7 +148,7 @@ export default function HomePage() {
           setIsSellerPerformanceLoading(false);
         });
     } else {
-      setAnalysis_sellerPerformanceData([]);
+      setAnalysis_sellerPerformanceData([]); // Clear data if no sellers or no products
       setIsSellerPerformanceLoading(false);
     }
   }, [analysis_selectedSellers, analysis_productsFilteredByMarketplace, toast]);
@@ -293,12 +291,12 @@ export default function HomePage() {
             <section aria-labelledby="seller-performance-title" className="space-y-6">
                 <Card className="shadow-lg p-2 sm:p-6">
                     <CardHeader className="pb-4 px-2 sm:px-6">
-                        <CardTitle>Análise de Desempenho por Vendedor</CardTitle>
-                        <CardDescription>Selecione um ou mais vendedores para ver suas métricas detalhadas, considerando o filtro de marketplace acima.</CardDescription>
+                        <CardTitle className="flex items-center"><Users className="mr-2 h-5 w-5 text-primary" /> Análise de Desempenho por Vendedor</CardTitle>
+                        <CardDescription>Selecione um ou mais vendedores para ver suas métricas consolidadas, considerando o filtro de marketplace acima.</CardDescription>
                     </CardHeader>
                     <CardContent className="px-2 sm:px-6">
-                        <Label className="text-sm font-medium mb-1 block">Selecionar Vendedor(es) para Análise Detalhada</Label>
-                         {(isLoading && uniqueSellersForAnalysis.length === 0 && allProducts.length > 0) || (isSellerPerformanceLoading && analysis_selectedSellers.length > 0 && uniqueSellersForAnalysis.length === 0) ? (
+                        <Label className="text-sm font-medium mb-1 block">Selecionar Vendedor(es) para Análise</Label>
+                         {(isLoading && uniqueSellersForAnalysis.length === 0 && allProducts.length > 0) || (isSellerPerformanceLoading && analysis_selectedSellers.length > 0 && uniqueSellersForAnalysis.length === 0 && analysis_productsFilteredByMarketplace.length > 0) ? (
                             <Skeleton className="h-10 w-full mt-1" />
                         ) : uniqueSellersForAnalysis.length === 0 && !isLoading ? (
                             <p className="text-xs text-muted-foreground mt-2">
@@ -327,7 +325,7 @@ export default function HomePage() {
                                         : prev.filter((s) => s !== seller)
                                     );
                                     }}
-                                    onSelect={(e) => e.preventDefault()} // Keep menu open
+                                    onSelect={(e) => e.preventDefault()} 
                                 >
                                     {seller}
                                 </DropdownMenuCheckboxItem>
@@ -341,8 +339,9 @@ export default function HomePage() {
 
                 <SellerPerformanceDashboard
                     performanceMetricsList={analysis_sellerPerformanceData}
-                    isLoading={isSellerPerformanceLoading || (isLoading && !allProducts.length && analysis_selectedSellers.length === 0) }
+                    isLoading={isSellerPerformanceLoading || (isLoading && analysis_selectedSellers.length > 0 && analysis_sellerPerformanceData.length === 0 && analysis_productsFilteredByMarketplace.length > 0 ) }
                     selectedSellersCount={analysis_selectedSellers.length}
+                    selectedSellerNames={analysis_selectedSellers}
                 />
             </section>
 
@@ -351,8 +350,8 @@ export default function HomePage() {
             <section aria-labelledby="buybox-analysis-title">
               <h2 id="buybox-analysis-title" className="sr-only">Análise de Buybox (Considerando Filtro de Análise)</h2>
               <BuyboxWinnersDisplay buyboxWinners={buyboxWinners} isLoading={isLoading && buyboxWinners.length === 0 && analysis_productsFilteredByMarketplace.length > 0} />
-              {(isLoading && analysis_productsFilteredByMarketplace.length === 0 && allProducts.length > 0) && <p className="text-center text-muted-foreground">Carregando dados de buybox...</p>}
-              {(!isLoading && analysis_productsFilteredByMarketplace.length === 0 && allProducts.length > 0) &&
+              {(isLoading && analysis_productsFilteredByMarketplace.length === 0 && allProducts.length > 0 && analysis_selectedMarketplace !== null) && <p className="text-center text-muted-foreground">Carregando dados de buybox...</p>}
+              {(!isLoading && analysis_productsFilteredByMarketplace.length === 0 && allProducts.length > 0 && analysis_selectedMarketplace !== null) &&
                 <Card className="shadow-lg">
                   <CardHeader>
                     <CardTitle>Vencedores de Buybox por Loja</CardTitle>
@@ -442,7 +441,29 @@ export default function HomePage() {
             </div>
 
             {isLoading && allProducts.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">Carregando produtos...</p>
+                 <div className="space-y-4">
+                    <Skeleton className="h-10 w-full" />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        {[...Array(8)].map((_, i) => (
+                        <Card key={`skel-prod-${i}`}>
+                            <CardHeader>
+                                <Skeleton className="h-36 w-full mb-4" />
+                                <Skeleton className="h-5 w-3/4" />
+                                <Skeleton className="h-4 w-1/2 mt-1" />
+                            </CardHeader>
+                            <CardContent className="space-y-2">
+                                <Skeleton className="h-4 w-full" />
+                                <Skeleton className="h-4 w-full" />
+                                <Skeleton className="h-4 w-2/3" />
+                            </CardContent>
+                            <CardFooter className="flex justify-between">
+                                <Skeleton className="h-6 w-1/4" />
+                                <Skeleton className="h-6 w-1/3" />
+                            </CardFooter>
+                        </Card>
+                        ))}
+                    </div>
+                </div>
             ) : (
                 <ProductList products={allProductsTab_filteredProducts} />
             )}
