@@ -1,5 +1,5 @@
 
-import type { Product, PriceTrendProductInfo, Metrics, BuyboxWinner, SellerAnalysisMetrics, ProductLosingBuyboxInfo, ProductWinningBuyboxInfo } from './types';
+import type { Product, PriceTrendProductInfo, Metrics, BuyboxWinner, SellerAnalysisMetrics, ProductLosingBuyboxInfo, ProductWinningBuyboxInfo, UniqueProductSummary } from './types';
 import { parseISO, compareDesc, differenceInDays, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -387,5 +387,62 @@ export const analyzeSellerPerformance = (
     productsWinningBuybox: productsWinningBuybox.sort((a,b) => (a.priceDifferenceToNext ?? Infinity) - (b.priceDifferenceToNext ?? Infinity) || a.descricao.localeCompare(b.descricao)),
     lastUpdateTime,
   };
+};
+
+
+export const generateUniqueProductSummaries = (products: Product[]): UniqueProductSummary[] => {
+  if (!products || products.length === 0) return [];
+
+  const productsBySku: Record<string, Product[]> = {};
+  products.forEach(product => {
+    if (!product || !product.sku) return;
+    if (!productsBySku[product.sku]) {
+      productsBySku[product.sku] = [];
+    }
+    productsBySku[product.sku].push(product);
+  });
+
+  const summaries: UniqueProductSummary[] = [];
+
+  for (const sku in productsBySku) {
+    const skuProducts = productsBySku[sku].filter(p => p && p.preco_final !== null && p.preco_final !== undefined);
+    if (skuProducts.length === 0) continue;
+
+    const sortedSkuProducts = [...skuProducts].sort((a, b) => {
+      try {
+        return compareDesc(parseISO(a.data_hora), parseISO(b.data_hora));
+      } catch {
+        return 0;
+      }
+    });
+
+    const latestProductInstance = sortedSkuProducts[0]; 
+
+    const uniqueMarketplacesForSku = Array.from(new Set(skuProducts.map(p => p.marketplace).filter(Boolean)));
+    const uniqueSellersForSku = new Set(skuProducts.map(p => p.loja).filter(Boolean));
+
+    let minPrice = Infinity;
+    let maxPrice = -Infinity;
+    skuProducts.forEach(p => {
+      if (p.preco_final < minPrice) minPrice = p.preco_final;
+      if (p.preco_final > maxPrice) maxPrice = p.preco_final;
+    });
+    
+    minPrice = minPrice === Infinity ? 0 : minPrice;
+    maxPrice = maxPrice === -Infinity ? 0 : maxPrice;
+
+    summaries.push({
+      sku: sku,
+      descricao: latestProductInstance.descricao,
+      imagem: latestProductInstance.imagem,
+      marketplaces: uniqueMarketplacesForSku.sort(),
+      latestScrapeDate: latestProductInstance.data_hora,
+      sellerCount: uniqueSellersForSku.size,
+      minPrice: minPrice,
+      maxPrice: maxPrice,
+    });
+  }
+
+  return summaries.sort((a,b) => a.sku.localeCompare(b.sku));
 };
 

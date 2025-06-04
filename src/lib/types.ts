@@ -72,3 +72,14 @@ export interface SellerAnalysisMetrics {
   lastUpdateTime: string | null;
 }
 
+export interface UniqueProductSummary {
+  sku: string;
+  descricao: string;
+  imagem: string;
+  marketplaces: string[]; // List of unique marketplaces this SKU is found in
+  latestScrapeDate: string; // ISO date string of the most recent scrape for this SKU
+  sellerCount: number; // Number of unique sellers for this SKU
+  minPrice: number;
+  maxPrice: number;
+}
+

@@ -2,12 +2,13 @@
 "use client";
 
 import { useEffect, useState, useMemo } from 'react';
-import type { Product, BuyboxWinner, SellerAnalysisMetrics } from '@/lib/types'; 
-import { fetchData, getUniqueSellers, calculateBuyboxWins, analyzeSellerPerformance, getUniqueMarketplaces } from '@/lib/data';
+import type { Product, BuyboxWinner, SellerAnalysisMetrics, UniqueProductSummary } from '@/lib/types'; 
+import { fetchData, getUniqueSellers, calculateBuyboxWins, analyzeSellerPerformance, getUniqueMarketplaces, generateUniqueProductSummaries } from '@/lib/data';
 import { AppHeader } from '@/components/AppHeader';
 import { BuyboxWinnersDisplay } from '@/components/BuyboxWinnersDisplay';
 import { SellerPerformanceDashboard } from '@/components/SellerPerformanceDashboard';
 import { ProductList } from '@/components/ProductList';
+import { ProductSummaryTable } from '@/components/ProductSummaryTable';
 import { SearchBar } from '@/components/SearchBar';
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/hooks/use-toast";
@@ -16,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Filter, List, BarChartBig, Search, Package } from 'lucide-react';
+import { Filter, List, BarChartBig, Search, Package, LayoutGrid } from 'lucide-react';
 
 const NO_SELLER_SELECTED_VALUE = "--none--";
 const ALL_MARKETPLACES_OPTION_VALUE = "--all-marketplaces--";
@@ -27,7 +28,7 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   
-  // Common state
+  // Common state for marketplace lists
   const [uniqueMarketplaces, setUniqueMarketplaces] = useState<string[]>([]);
 
   // State for "Análise Detalhada" Tab
@@ -42,6 +43,12 @@ export default function HomePage() {
   const [allProductsTab_selectedMarketplace, setAllProductsTab_selectedMarketplace] = useState<string | null>(null);
   const [allProductsTab_searchTerm, setAllProductsTab_searchTerm] = useState<string>('');
 
+  // State for "Visão Geral do Produto" Tab
+  const [uniqueProductSummaries, setUniqueProductSummaries] = useState<UniqueProductSummary[]>([]);
+  const [overviewTab_selectedMarketplace, setOverviewTab_selectedMarketplace] = useState<string | null>(null);
+  const [overviewTab_searchTerm, setOverviewTab_searchTerm] = useState<string>('');
+
+
   useEffect(() => {
     async function loadInitialData() {
       setIsLoading(true);
@@ -52,8 +59,6 @@ export default function HomePage() {
         const marketplaces = getUniqueMarketplaces(products);
         setUniqueMarketplaces(marketplaces);
         
-        // Initial seller list and focused seller based on all products initially (for analysis tab)
-        // This will be refined by analysis marketplace filter effect later
         const initialSellers = getUniqueSellers(products);
         setUniqueSellersForAnalysis(initialSellers);
         if (initialSellers.includes(DEFAULT_SELLER_FOCUS)) {
@@ -61,6 +66,8 @@ export default function HomePage() {
         } else {
           setFocusedSeller(null);
         }
+
+        setUniqueProductSummaries(generateUniqueProductSummaries(products));
 
       } catch (error) {
         console.error("Failed to load products on page:", error);
@@ -82,6 +89,7 @@ export default function HomePage() {
         setUniqueSellersForAnalysis([]);
         setBuyboxWinners([]);
         setFocusedSeller(null);
+        setUniqueProductSummaries([]);
       } finally {
         setIsLoading(false);
       }
@@ -106,23 +114,20 @@ export default function HomePage() {
     if (focusedSeller && !currentMarketplaceSellers.includes(focusedSeller)) {
         setFocusedSeller(null);
         setSellerPerformanceData(null); 
-    } else if (!focusedSeller && currentMarketplaceSellers.includes(DEFAULT_SELLER_FOCUS) && analysis_selectedMarketplace === null) {
-        // Only auto-focus DEFAULT_SELLER_FOCUS if no marketplace filter is applied or if it's present with the filter
+    } else if (!focusedSeller && currentMarketplaceSellers.includes(DEFAULT_SELLER_FOCUS) && (analysis_selectedMarketplace === null || analysis_selectedMarketplace === ALL_MARKETPLACES_OPTION_VALUE)) {
          setFocusedSeller(DEFAULT_SELLER_FOCUS);
     } else if (focusedSeller && !currentMarketplaceSellers.includes(focusedSeller)) {
-        setFocusedSeller(null); // Clear focused seller if no longer in the filtered list
+        setFocusedSeller(null);
     }
-
 
     setBuyboxWinners(calculateBuyboxWins(analysis_productsFilteredByMarketplace));
 
-  }, [analysis_productsFilteredByMarketplace, focusedSeller]); 
+  }, [analysis_productsFilteredByMarketplace, focusedSeller, analysis_selectedMarketplace]); 
 
 
   useEffect(() => {
     if (focusedSeller && analysis_productsFilteredByMarketplace.length > 0) {
       setIsSellerPerformanceLoading(true);
-      // Simulate a small delay if needed, or remove for direct calculation
       const performanceData = analyzeSellerPerformance(analysis_productsFilteredByMarketplace, focusedSeller);
       setSellerPerformanceData(performanceData);
       setIsSellerPerformanceLoading(false);
@@ -177,14 +182,57 @@ export default function HomePage() {
   }, [allProductsTab_filteredProducts, allProductsTab_selectedMarketplace, allProductsTab_searchTerm]);
 
 
+  // Memoized summaries for "Visão Geral do Produto" Tab
+  const overviewTab_filteredSummaries = useMemo(() => {
+    let filtered = uniqueProductSummaries;
+
+    if (overviewTab_selectedMarketplace && overviewTab_selectedMarketplace !== ALL_MARKETPLACES_OPTION_VALUE) {
+      filtered = filtered.filter(summary => summary.marketplaces.includes(overviewTab_selectedMarketplace));
+    }
+
+    if (overviewTab_searchTerm) {
+      const lowerSearchTerm = overviewTab_searchTerm.toLowerCase();
+      filtered = filtered.filter(summary =>
+        summary.descricao.toLowerCase().includes(lowerSearchTerm) ||
+        summary.sku.toLowerCase().includes(lowerSearchTerm)
+      );
+    }
+    return filtered;
+  }, [uniqueProductSummaries, overviewTab_selectedMarketplace, overviewTab_searchTerm]);
+
+  const handleOverviewMarketplaceChange = (value: string) => {
+    const newMarketplace = value === ALL_MARKETPLACES_OPTION_VALUE ? null : value;
+    setOverviewTab_selectedMarketplace(newMarketplace);
+  };
+  
+  const overviewProductCountMessage = useMemo(() => {
+    const count = overviewTab_filteredSummaries.length;
+    let message = `Exibindo ${count} SKU(s) único(s)`;
+    if (overviewTab_selectedMarketplace && overviewTab_selectedMarketplace !== ALL_MARKETPLACES_OPTION_VALUE) {
+      message += ` encontrado(s) no marketplace "${overviewTab_selectedMarketplace}"`;
+    } else {
+      message += ` (todos os marketplaces)`;
+    }
+    if (overviewTab_searchTerm) {
+      message += ` correspondente(s) à pesquisa.`;
+    } else {
+      message += `.`;
+    }
+    return message;
+  }, [overviewTab_filteredSummaries, overviewTab_selectedMarketplace, overviewTab_searchTerm]);
+
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <AppHeader />
       <main className="flex-grow container mx-auto px-4 py-8 space-y-8">
         <Tabs defaultValue="analysis" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsList className="grid w-full grid-cols-3 mb-6">
             <TabsTrigger value="analysis" className="py-3 text-base">
                 <BarChartBig className="mr-2 h-5 w-5" /> Análise Detalhada
+            </TabsTrigger>
+            <TabsTrigger value="product-overview" className="py-3 text-base">
+                <LayoutGrid className="mr-2 h-5 w-5" /> Visão Geral do Produto
             </TabsTrigger>
             <TabsTrigger value="all-products" className="py-3 text-base">
                 <Package className="mr-2 h-5 w-5" /> Todos os Produtos
@@ -265,6 +313,47 @@ export default function HomePage() {
             </section>
           </TabsContent>
 
+           <TabsContent value="product-overview" className="space-y-6">
+            <Card className="shadow-lg p-2 sm:p-6">
+              <CardHeader className="pb-4 px-2 sm:px-6">
+                <CardTitle className="flex items-center"><Filter className="mr-2 h-5 w-5 text-primary" />Filtros para Visão Geral</CardTitle>
+                <CardDescription>Filtre a lista de SKUs únicos abaixo por marketplace de ocorrência e/ou termo de pesquisa.</CardDescription>
+              </CardHeader>
+              <CardContent className="px-2 sm:px-6 space-y-4">
+                <div>
+                  <Label htmlFor="overview-marketplace-filter" className="text-sm font-medium">Filtrar por Marketplace de Ocorrência</Label>
+                  <Select
+                    value={overviewTab_selectedMarketplace || ALL_MARKETPLACES_OPTION_VALUE}
+                    onValueChange={handleOverviewMarketplaceChange}
+                  >
+                    <SelectTrigger id="overview-marketplace-filter" className="mt-1">
+                      <SelectValue placeholder="Selecione um marketplace..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={ALL_MARKETPLACES_OPTION_VALUE}>Todos os Marketplaces</SelectItem>
+                      {uniqueMarketplaces.map(mp => <SelectItem key={`mp-filter-overview-${mp}`} value={mp}>{mp}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="overview-search" className="text-sm font-medium">Pesquisar SKUs</Label>
+                  <SearchBar
+                    searchTerm={overviewTab_searchTerm}
+                    onSearchChange={setOverviewTab_searchTerm}
+                    placeholder="Pesquisar por descrição ou SKU..."
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="text-sm text-muted-foreground mb-4">
+              {overviewProductCountMessage}
+            </div>
+            
+            <ProductSummaryTable summaries={overviewTab_filteredSummaries} isLoading={isLoading && uniqueProductSummaries.length === 0} />
+            
+          </TabsContent>
+
           <TabsContent value="all-products" className="space-y-6">
             <Card className="shadow-lg p-2 sm:p-6">
                 <CardHeader className="pb-4 px-2 sm:px-6">
@@ -317,5 +406,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-    
