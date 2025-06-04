@@ -443,6 +443,7 @@ export const generateUniqueProductSummaries = (products: Product[]): UniqueProdu
     });
   }
 
-  return summaries.sort((a,b) => a.sku.localeCompare(b.sku));
+  // Sort by sellerCount (descending), then by SKU (ascending) as a tie-breaker
+  return summaries.sort((a,b) => b.sellerCount - a.sellerCount || a.sku.localeCompare(b.sku));
 };
 
