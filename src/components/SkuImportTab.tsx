@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, type ChangeEvent } from 'react';
@@ -7,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { UploadCloud, FileText, AlertTriangle } from 'lucide-react';
+import { UploadCloud, FileText, AlertTriangle, FileSpreadsheet } from 'lucide-react';
 
 interface SkuImportTabProps {
   onImport: (importedSkus: Record<string, string>) => void;
@@ -44,6 +43,30 @@ export function SkuImportTab({ onImport }: SkuImportTabProps) {
     }
   };
 
+  const handleDownloadTemplate = () => {
+    const sampleData = [
+      { [EXPECTED_PRIMARY_SKU_COLUMN]: "EXEMPLO_SKU_LOJA_1", [EXPECTED_INTERNAL_SKU_COLUMN_UNDERSCORE]: "MEU_SKU_INTERNO_123" },
+      { [EXPECTED_PRIMARY_SKU_COLUMN]: "EXEMPLO_SKU_LOJA_2", [EXPECTED_INTERNAL_SKU_COLUMN_UNDERSCORE]: "MEU_SKU_INTERNO_456" },
+      { [EXPECTED_PRIMARY_SKU_COLUMN]: "OUTRO_SKU_DA_LOJA", [EXPECTED_INTERNAL_SKU_COLUMN_UNDERSCORE]: "MEU_SKU_XYZ" },
+    ];
+    const worksheet = XLSX.utils.json_to_sheet(sampleData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "SKUs"); // "SKUs" is the sheet name
+    
+    // Attempt to set column widths (optional, might not work perfectly in all Excel versions)
+    const wscols = [
+        { wch: (EXPECTED_PRIMARY_SKU_COLUMN.length > 25 ? EXPECTED_PRIMARY_SKU_COLUMN.length : 25) + 5 }, // SKU_Principal
+        { wch: (EXPECTED_INTERNAL_SKU_COLUMN_UNDERSCORE.length > 25 ? EXPECTED_INTERNAL_SKU_COLUMN_UNDERSCORE.length : 25) + 5 }  // SKU_Interno
+    ];
+    worksheet['!cols'] = wscols;
+
+    XLSX.writeFile(workbook, "modelo_importacao_sku.xlsx");
+     toast({
+        title: "Download Iniciado",
+        description: "O arquivo modelo_importacao_sku.xlsx está sendo baixado.",
+    });
+  };
+
   const handleImport = async () => {
     if (!selectedFile) {
       toast({
@@ -72,7 +95,7 @@ export function SkuImportTab({ onImport }: SkuImportTabProps) {
         let importedCount = 0;
         let skippedCount = 0;
 
-        const columnNotFoundDescription = `Verifique se o arquivo XLSX contém as colunas "${EXPECTED_PRIMARY_SKU_COLUMN}" e uma das seguintes para o SKU interno: "${EXPECTED_INTERNAL_SKU_COLUMN_UNDERSCORE}" ou "${EXPECTED_INTERNAL_SKU_COLUMN_SPACE}". Verifique também se não há espaços extras nos nomes dos cabeçalhos no arquivo Excel.`;
+        const columnNotFoundDescription = `Verifique se o arquivo XLSX contém as colunas "${EXPECTED_PRIMARY_SKU_COLUMN}" e uma das seguintes para o SKU interno: "${EXPECTED_INTERNAL_SKU_COLUMN_UNDERSCORE}" ou "${EXPECTED_INTERNAL_SKU_COLUMN_SPACE}". Verifique também se não há espaços extras nos nomes dos cabeçalhos no arquivo Excel. Você pode baixar um modelo com os cabeçalhos corretos.`;
         
         if (data.length === 0) {
            toast({
@@ -206,9 +229,16 @@ export function SkuImportTab({ onImport }: SkuImportTabProps) {
                     </p>
                 )}
             </div>
-            <Button onClick={handleImport} disabled={!selectedFile || isProcessing} className="w-full sm:w-auto">
-            {isProcessing ? 'Processando...' : 'Importar Arquivo'}
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                <Button onClick={handleImport} disabled={!selectedFile || isProcessing} className="w-full sm:w-auto">
+                    <UploadCloud className="mr-2 h-4 w-4" />
+                    {isProcessing ? 'Processando...' : 'Importar Arquivo'}
+                </Button>
+                <Button variant="outline" onClick={handleDownloadTemplate} className="w-full sm:w-auto">
+                    <FileSpreadsheet className="mr-2 h-4 w-4" />
+                    Baixar Modelo
+                </Button>
+            </div>
 
             <Card className="bg-muted/50 w-full">
                 <CardHeader className="pb-2">
@@ -223,6 +253,7 @@ export function SkuImportTab({ onImport }: SkuImportTabProps) {
                     <p>3. Os cabeçalhos da primeira linha devem ser <strong>{EXPECTED_PRIMARY_SKU_COLUMN}</strong> e (<strong>{EXPECTED_INTERNAL_SKU_COLUMN_UNDERSCORE}</strong> ou <strong>{EXPECTED_INTERNAL_SKU_COLUMN_SPACE}</strong>). Verifique se não há espaços extras.</p>
                     <p>4. SKUs principais duplicados no arquivo? O último encontrado prevalecerá.</p>
                     <p>5. A importação mesclará os dados com os SKUs internos já existentes. Se um SKU Principal do arquivo já existir no sistema, seu SKU Interno será atualizado.</p>
+                     <p>6. Clique em "Baixar Modelo" para obter um arquivo com os cabeçalhos e formato corretos.</p>
                 </CardContent>
             </Card>
         </div>
@@ -230,4 +261,3 @@ export function SkuImportTab({ onImport }: SkuImportTabProps) {
     </Card>
   );
 }
-
