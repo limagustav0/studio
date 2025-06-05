@@ -3,7 +3,7 @@ import type { SellerAnalysisMetrics, ProductLosingBuyboxInfo, ProductWinningBuyb
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TrendingUp, TrendingDown, ListChecks, PackageSearch, AlertTriangle, Info, CheckCircle2, Clock, Users, Store } from 'lucide-react';
+import { TrendingUp, TrendingDown, ListChecks, PackageSearch, AlertTriangle, Info, CheckCircle2, Clock, Users } from 'lucide-react';
 import Image from 'next/image';
 import { format as formatDate, parseISO, compareDesc } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -241,8 +241,7 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
                     <TableHead className="w-[60px] hidden sm:table-cell">Imagem</TableHead>
                     <TableHead>Produto (SKU)</TableHead>
                     <TableHead>Vendedor (Marketplace)</TableHead>
-                    <TableHead className="text-right">Seu Preço</TableHead>
-                    <TableHead className="text-right">Preço Vencedor</TableHead>
+                    <TableHead className="text-right">Preços</TableHead>
                     <TableHead>Vencedor do Buybox</TableHead>
                     <TableHead className="text-right">Diferença</TableHead>
                     <TableHead className="text-right">Ultima raspagem</TableHead>
@@ -269,8 +268,16 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
                         <div className="font-medium max-w-xs truncate" title={item.sellerName}>{item.sellerName}</div>
                         <div className="text-xs text-muted-foreground max-w-xs truncate" title={item.marketplace}>{item.marketplace}</div>
                       </TableCell>
-                      <TableCell className="text-right">R$ {item.sellerPrice.toFixed(2)}</TableCell>
-                      <TableCell className="text-right font-semibold text-green-600">R$ {item.winningPrice.toFixed(2)}</TableCell>
+                      <TableCell className="text-right">
+                        <div>
+                          <span className="text-xs text-muted-foreground mr-1">Seu:</span>
+                          <span className="text-green-600">R$ {item.sellerPrice.toFixed(2)}</span>
+                        </div>
+                        <div>
+                          <span className="text-xs text-muted-foreground mr-1">Vencedor:</span>
+                          <span className="font-semibold text-green-600">R$ {item.winningPrice.toFixed(2)}</span>
+                        </div>
+                      </TableCell>
                       <TableCell className="max-w-[120px] truncate" title={item.winningSeller}>{item.winningSeller}</TableCell>
                       <TableCell className="text-right text-red-600">R$ {item.priceDifference.toFixed(2)}</TableCell>
                       <TableCell className="text-right text-xs text-muted-foreground">{formatTableCellDateTime(item.data_hora)}</TableCell>
