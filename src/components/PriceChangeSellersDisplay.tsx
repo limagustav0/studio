@@ -6,9 +6,24 @@ import type { Product } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Repeat, Users, Package, TrendingUp, BarChartHorizontalBig } from 'lucide-react';
+import { Users, Package, TrendingUp, BarChartHorizontalBig } from 'lucide-react';
 import Image from 'next/image';
 import { parseISO, compareDesc } from 'date-fns';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  LabelList,
+} from 'recharts';
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
 
 interface PriceChangeSellersDisplayProps {
   allProducts: Product[];
@@ -28,12 +43,20 @@ interface SkuChangeFrequency {
   changeInstanceCount: number;
 }
 
-const TOP_N_SKUS = 10;
+const TOP_N_SKUS_TABLE = 10;
+const TOP_N_SELLERS_CHART = 10;
+
+const chartConfig = {
+  totalChangeInstances: {
+    label: "Total de Alterações",
+    color: "hsl(var(--chart-1))",
+  },
+} satisfies ChartConfig;
 
 export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChangeSellersDisplayProps) {
-  const { sellerSummaries, skuFrequencies } = React.useMemo(() => {
+  const { sellerSummaries, skuFrequencies, topSellersForChart } = React.useMemo(() => {
     if (!allProducts || allProducts.length === 0) {
-      return { sellerSummaries: [], skuFrequencies: [] };
+      return { sellerSummaries: [], skuFrequencies: [], topSellersForChart: [] };
     }
 
     const productsWithChange = allProducts.filter(p => p.change_price === true);
@@ -56,6 +79,11 @@ export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChang
         distinctSkusChanged: data.skus.size,
       }))
       .sort((a, b) => b.totalChangeInstances - a.totalChangeInstances || a.sellerName.localeCompare(b.sellerName));
+    
+    const calculatedTopSellersForChart = [...calculatedSellerSummaries] // Create a copy for chart data processing
+      .slice(0, TOP_N_SELLERS_CHART)
+      .reverse(); // Reverse for horizontal bar chart (bottom to top display)
+
 
     // Calculate SKU frequencies
     const skuMap: Record<string, Product[]> = {};
@@ -69,11 +97,10 @@ export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChang
 
     const calculatedSkuFrequencies: SkuChangeFrequency[] = Object.entries(skuMap)
       .map(([sku, products]) => {
-        // Sort by date_hora to get the most recent product instance for image/description
         const sortedProducts = [...products].sort((a,b) => {
             try { return compareDesc(parseISO(a.data_hora), parseISO(b.data_hora))} catch { return 0; }
         });
-        const latestProduct = sortedProducts[0] || products[0]; // Fallback if sorting fails
+        const latestProduct = sortedProducts[0] || products[0];
         return {
           sku,
           descricao: latestProduct.descricao,
@@ -82,9 +109,9 @@ export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChang
         };
       })
       .sort((a, b) => b.changeInstanceCount - a.changeInstanceCount || a.sku.localeCompare(b.sku))
-      .slice(0, TOP_N_SKUS);
+      .slice(0, TOP_N_SKUS_TABLE);
 
-    return { sellerSummaries: calculatedSellerSummaries, skuFrequencies: calculatedSkuFrequencies };
+    return { sellerSummaries: calculatedSellerSummaries, skuFrequencies: calculatedSkuFrequencies, topSellersForChart: calculatedTopSellersForChart };
   }, [allProducts]);
 
   if (isLoading) {
@@ -93,13 +120,13 @@ export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChang
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center">
-              <Users className="mr-2 h-5 w-5 text-primary" />
-              Vendedores por Contagem de Alterações
+              <BarChartHorizontalBig className="mr-2 h-5 w-5 text-primary" />
+              Top {TOP_N_SELLERS_CHART} Vendedores por Alterações de Preço
             </CardTitle>
-            <CardDescription>Carregando dados dos vendedores que alteraram preços...</CardDescription>
+            <CardDescription>Carregando dados dos vendedores que mais alteraram preços...</CardDescription>
           </CardHeader>
           <CardContent>
-            <Skeleton className="h-40 w-full rounded-md" />
+            <Skeleton className="h-80 w-full rounded-md" />
           </CardContent>
         </Card>
         <Card className="shadow-lg">
@@ -124,42 +151,49 @@ export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChang
         <CardHeader>
           <CardTitle className="flex items-center">
             <BarChartHorizontalBig className="mr-2 h-5 w-5 text-primary" />
-            Vendedores por Contagem de Alterações de Preço
+            Top {TOP_N_SELLERS_CHART} Vendedores por Contagem de Alterações de Preço
           </CardTitle>
           <CardDescription>
-            Vendedores ordenados pelo número total de vezes que a flag 'change_price' foi detectada em seus produtos.
+            Gráfico dos {TOP_N_SELLERS_CHART} vendedores com maior número de vezes que a flag 'change_price' foi detectada em seus produtos.
+            {sellerSummaries.length > TOP_N_SELLERS_CHART && (
+                ` (Exibindo top ${TOP_N_SELLERS_CHART} de ${sellerSummaries.length} vendedores).`
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {sellerSummaries.length > 0 ? (
-            <>
-              <p className="text-sm text-muted-foreground mb-4">
-                Exibindo {sellerSummaries.length} vendedor(es) com alterações de preço detectadas.
-              </p>
-              <div className="overflow-x-auto rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Vendedor</TableHead>
-                      <TableHead className="text-right">Total de Alterações Registradas</TableHead>
-                      <TableHead className="text-right">SKUs Distintos Alterados</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {sellerSummaries.map(summary => (
-                      <TableRow key={summary.sellerName}>
-                        <TableCell className="font-medium max-w-xs truncate" title={summary.sellerName}>{summary.sellerName}</TableCell>
-                        <TableCell className="text-right">{summary.totalChangeInstances}</TableCell>
-                        <TableCell className="text-right">{summary.distinctSkusChanged}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </>
+          {topSellersForChart.length > 0 ? (
+            <div className="h-[400px] w-full"> {/* Adjust height as needed */}
+              <ChartContainer config={chartConfig} className="w-full h-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    layout="vertical"
+                    data={topSellersForChart}
+                    margin={{ top: 5, right: 30, left: 100, bottom: 5 }} // Adjust left margin for seller names
+                  >
+                    <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                    <YAxis
+                      dataKey="sellerName"
+                      type="category"
+                      stroke="hsl(var(--muted-foreground))"
+                      fontSize={12}
+                      tickFormatter={(value) => value.length > 20 ? `${value.substring(0, 20)}...` : value}
+                      width={150} // Ensure enough space for YAxis labels
+                      interval={0} // Show all labels
+                    />
+                    <Tooltip
+                      cursor={{ fill: "hsl(var(--muted))" }}
+                      content={<ChartTooltipContent indicator="dot" />}
+                    />
+                    <Bar dataKey="totalChangeInstances" fill="var(--color-totalChangeInstances)" radius={[0, 4, 4, 0]}>
+                       <LabelList dataKey="totalChangeInstances" position="right" offset={8} className="fill-foreground" fontSize={12} />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            </div>
           ) : (
             <p className="text-muted-foreground text-center py-4">
-              Nenhum vendedor com alteração de preço (baseado na flag 'change_price') encontrado nos dados atuais.
+              Nenhum vendedor com alteração de preço (baseado na flag 'change_price') encontrado nos dados atuais para exibir no gráfico.
             </p>
           )}
         </CardContent>
@@ -169,7 +203,7 @@ export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChang
         <CardHeader>
           <CardTitle className="flex items-center">
             <TrendingUp className="mr-2 h-5 w-5 text-primary" />
-            Top {TOP_N_SKUS} SKUs Sinalizados com Alteração de Preço
+            Top {TOP_N_SKUS_TABLE} SKUs Sinalizados com Alteração de Preço
           </CardTitle>
           <CardDescription>
             SKUs com o maior número de ocorrências da flag 'change_price' como verdadeira.
@@ -218,3 +252,5 @@ export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChang
     </div>
   );
 }
+
+    
