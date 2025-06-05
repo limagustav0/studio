@@ -26,6 +26,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 const ALL_MARKETPLACES_OPTION_VALUE = "--all-marketplaces--";
 const DEFAULT_SELLER_FOCUS = "HAIRPRO";
+const INTERNAL_SKUS_LOCAL_STORAGE_KEY = 'priceWiseInternalSkusMap';
 
 export default function HomePage() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
@@ -52,6 +53,32 @@ export default function HomePage() {
   const [uniqueProductSummaries, setUniqueProductSummaries] = useState<UniqueProductSummary[]>([]);
   const [overviewTab_selectedMarketplace, setOverviewTab_selectedMarketplace] = useState<string | null>(null);
   const [overviewTab_searchTerm, setOverviewTab_searchTerm] = useState<string>('');
+
+  // Load internal SKUs from localStorage on initial mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedSkus = localStorage.getItem(INTERNAL_SKUS_LOCAL_STORAGE_KEY);
+      if (savedSkus) {
+        try {
+          setInternalSkusMap(JSON.parse(savedSkus));
+        } catch (error) {
+          console.error("Error parsing internal SKUs from localStorage:", error);
+        }
+      }
+    }
+  }, []);
+
+  // Save internal SKUs to localStorage whenever they change
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (Object.keys(internalSkusMap).length > 0) {
+        localStorage.setItem(INTERNAL_SKUS_LOCAL_STORAGE_KEY, JSON.stringify(internalSkusMap));
+      } else {
+        // Optional: remove if empty to clean up, or keep to avoid re-checking on next load if it was intentionally cleared.
+        // localStorage.removeItem(INTERNAL_SKUS_LOCAL_STORAGE_KEY);
+      }
+    }
+  }, [internalSkusMap]);
 
 
   useEffect(() => {
@@ -298,7 +325,7 @@ export default function HomePage() {
                     <CardDescription>Aplique filtros para refinar os dados exibidos nas seções de Análise de Desempenho e Vencedores de Buybox abaixo.</CardDescription>
                 </CardHeader>
                 <CardContent className="px-2 sm:px-6 space-y-4">
-                   <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+                   <div className="grid grid-cols-1 md:grid-cols-1 gap-4"> {/* Alterado para md:grid-cols-1 para ocupar a largura total */}
                     <div>
                         <Label htmlFor="analysis-marketplace-filter" className="text-sm font-medium">Filtrar por Marketplace</Label>
                         <Select
