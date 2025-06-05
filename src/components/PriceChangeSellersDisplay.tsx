@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import type { Product } from '@/lib/types';
+import type { Product, SellerPriceChangeSummary, SkuChangeFrequency } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -37,18 +37,18 @@ interface PriceChangeSellersDisplayProps {
   isLoading: boolean;
 }
 
-interface SellerPriceChangeSummary {
-  sellerName: string;
-  totalChangeInstances: number;
-  distinctSkusChanged: number;
-}
+// interface SellerPriceChangeSummary { // Already in types
+//   sellerName: string;
+//   totalChangeInstances: number;
+//   distinctSkusChanged: number;
+// }
 
-interface SkuChangeFrequency {
-  sku: string;
-  descricao: string;
-  imagem: string;
-  changeInstanceCount: number;
-}
+// interface SkuChangeFrequency { // Already in types
+//   sku: string;
+//   descricao: string;
+//   imagem: string;
+//   changeInstanceCount: number;
+// }
 
 const TOP_N_SKUS_TABLE = 10;
 const TOP_N_SELLERS_CHART = 10;
@@ -73,124 +73,110 @@ const formatDetailedTableDate = (isoDateString: string | null | undefined) => {
 
 export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChangeSellersDisplayProps) {
 
-  // --- START TEMPORARY SIMPLIFICATION FOR DEBUGGING ---
-  const stubbedData = {
-    sellerSummaries: [] as SellerPriceChangeSummary[],
-    skuFrequencies: [] as SkuChangeFrequency[],
-    topSellersForChart: [] as SellerPriceChangeSummary[],
-    productsChangedBySeller: {} as Record<string, Product[]>
-  };
+  const { sellerSummaries, skuFrequencies, topSellersForChart, productsChangedBySeller } = React.useMemo(() => {
+    if (!allProducts || allProducts.length === 0) {
+      return { sellerSummaries: [], skuFrequencies: [], topSellersForChart: [], productsChangedBySeller: {} };
+    }
 
-  const { sellerSummaries, skuFrequencies, topSellersForChart, productsChangedBySeller } = stubbedData;
-  // --- END TEMPORARY SIMPLIFICATION FOR DEBUGGING ---
+    const productsWithChange = allProducts.filter(p => p && p.change_price === true && p.loja && p.sku);
 
+    const sellerMap: Record<string, { products: Product[], skus: Set<string> }> = {};
+    productsWithChange.forEach(p => {
+      if (p.loja) { 
+        if (!sellerMap[p.loja]) {
+          sellerMap[p.loja] = { products: [], skus: new Set() };
+        }
+        sellerMap[p.loja].products.push(p);
+        if (p.sku) { 
+          sellerMap[p.loja].skus.add(p.sku);
+        }
+      }
+    });
 
-  // --- ORIGINAL useMemo (COMMENTED OUT FOR DEBUGGING) ---
-  // const { sellerSummaries, skuFrequencies, topSellersForChart, productsChangedBySeller } = React.useMemo(() => {
-  //   if (!allProducts || allProducts.length === 0) {
-  //     return { sellerSummaries: [], skuFrequencies: [], topSellersForChart: [], productsChangedBySeller: {} };
-  //   }
+    const calculatedSellerSummaries: SellerPriceChangeSummary[] = Object.entries(sellerMap)
+      .map(([sellerName, data]) => ({
+        sellerName,
+        totalChangeInstances: data.products.length,
+        distinctSkusChanged: data.skus.size,
+      }))
+      .sort((a, b) => b.totalChangeInstances - a.totalChangeInstances || a.sellerName.localeCompare(b.sellerName));
 
-  //   const productsWithChange = allProducts.filter(p => p && p.change_price === true && p.loja && p.sku);
+    const calculatedTopSellersForChart = [...calculatedSellerSummaries]
+      .slice(0, TOP_N_SELLERS_CHART)
+      .reverse(); 
 
-  //   const sellerMap: Record<string, { products: Product[], skus: Set<string> }> = {};
-  //   productsWithChange.forEach(p => {
-  //     if (p.loja) { 
-  //       if (!sellerMap[p.loja]) {
-  //         sellerMap[p.loja] = { products: [], skus: new Set() };
-  //       }
-  //       sellerMap[p.loja].products.push(p);
-  //       if (p.sku) { 
-  //         sellerMap[p.loja].skus.add(p.sku);
-  //       }
-  //     }
-  //   });
+    const skuMap: Record<string, Product[]> = {};
+    productsWithChange.forEach(p => {
+      if (p.sku) { 
+        if (!skuMap[p.sku]) {
+          skuMap[p.sku] = [];
+        }
+        skuMap[p.sku].push(p);
+      }
+    });
 
-  //   const calculatedSellerSummaries: SellerPriceChangeSummary[] = Object.entries(sellerMap)
-  //     .map(([sellerName, data]) => ({
-  //       sellerName,
-  //       totalChangeInstances: data.products.length,
-  //       distinctSkusChanged: data.skus.size,
-  //     }))
-  //     .sort((a, b) => b.totalChangeInstances - a.totalChangeInstances || a.sellerName.localeCompare(b.sellerName));
+    const calculatedSkuFrequencies: SkuChangeFrequency[] = Object.entries(skuMap)
+      .map(([sku, productsForThisSku]) => {
+        let latestProduct: Product | null = null;
+        if (productsForThisSku && productsForThisSku.length > 0) {
+          const sortedProducts = [...productsForThisSku].sort((a, b) => {
+            try {
+                const dateA = a.data_hora ? parseISO(a.data_hora) : null;
+                const dateB = b.data_hora ? parseISO(b.data_hora) : null;
+                if (dateA && dateB) return compareDesc(dateA, dateB);
+                if (dateA) return -1;
+                if (dateB) return 1;
+                return 0;
+            } catch { return 0; }
+          });
+          latestProduct = sortedProducts[0] || null;
+        }
 
-  //   const calculatedTopSellersForChart = [...calculatedSellerSummaries]
-  //     .slice(0, TOP_N_SELLERS_CHART)
-  //     .reverse(); 
+        return {
+          sku,
+          descricao: latestProduct?.descricao || 'N/A',
+          imagem: latestProduct?.imagem || '',
+          changeInstanceCount: productsForThisSku ? productsForThisSku.length : 0,
+        };
+      })
+      .sort((a, b) => b.changeInstanceCount - a.changeInstanceCount || a.sku.localeCompare(b.sku))
+      .slice(0, TOP_N_SKUS_TABLE);
 
-  //   const skuMap: Record<string, Product[]> = {};
-  //   productsWithChange.forEach(p => {
-  //     if (p.sku) { 
-  //       if (!skuMap[p.sku]) {
-  //         skuMap[p.sku] = [];
-  //       }
-  //       skuMap[p.sku].push(p);
-  //     }
-  //   });
+    const calculatedProductsChangedBySeller: Record<string, Product[]> = {};
+    productsWithChange.forEach(p => {
+        if (p.loja) { 
+            if (!calculatedProductsChangedBySeller[p.loja]) {
+                calculatedProductsChangedBySeller[p.loja] = [];
+            }
+            calculatedProductsChangedBySeller[p.loja].push(p);
+        }
+    });
 
-  //   const calculatedSkuFrequencies: SkuChangeFrequency[] = Object.entries(skuMap)
-  //     .map(([sku, productsForThisSku]) => {
-  //       let latestProduct: Product | null = null;
-  //       if (productsForThisSku && productsForThisSku.length > 0) {
-  //         const sortedProducts = [...productsForThisSku].sort((a, b) => {
-  //           try {
-  //               const dateA = a.data_hora ? parseISO(a.data_hora) : null;
-  //               const dateB = b.data_hora ? parseISO(b.data_hora) : null;
-  //               if (dateA && dateB) return compareDesc(dateA, dateB);
-  //               if (dateA) return -1;
-  //               if (dateB) return 1;
-  //               return 0;
-  //           } catch { return 0; }
-  //         });
-  //         latestProduct = sortedProducts[0] || null;
-  //       }
+    for (const seller in calculatedProductsChangedBySeller) {
+        if (calculatedProductsChangedBySeller[seller]) {
+            calculatedProductsChangedBySeller[seller].sort((a, b) => {
+                try {
+                    const dateA = a.data_hora ? parseISO(a.data_hora) : null;
+                    const dateB = b.data_hora ? parseISO(b.data_hora) : null;
 
-  //       return {
-  //         sku,
-  //         descricao: latestProduct?.descricao || 'N/A',
-  //         imagem: latestProduct?.imagem || '',
-  //         changeInstanceCount: productsForThisSku ? productsForThisSku.length : 0,
-  //       };
-  //     })
-  //     .sort((a, b) => b.changeInstanceCount - a.changeInstanceCount || a.sku.localeCompare(b.sku))
-  //     .slice(0, TOP_N_SKUS_TABLE);
+                    if (dateA && dateB) return compareDesc(dateA, dateB);
+                    if (dateA) return -1;
+                    if (dateB) return 1;
+                    return (a.descricao || '').localeCompare(b.descricao || '');
+                } catch {
+                    return (a.descricao || '').localeCompare(b.descricao || '');
+                }
+            });
+        }
+    }
 
-  //   const calculatedProductsChangedBySeller: Record<string, Product[]> = {};
-  //   productsWithChange.forEach(p => {
-  //       if (p.loja) { 
-  //           if (!calculatedProductsChangedBySeller[p.loja]) {
-  //               calculatedProductsChangedBySeller[p.loja] = [];
-  //           }
-  //           calculatedProductsChangedBySeller[p.loja].push(p);
-  //       }
-  //   });
-
-  //   for (const seller in calculatedProductsChangedBySeller) {
-  //       if (calculatedProductsChangedBySeller[seller]) {
-  //           calculatedProductsChangedBySeller[seller].sort((a, b) => {
-  //               try {
-  //                   const dateA = a.data_hora ? parseISO(a.data_hora) : null;
-  //                   const dateB = b.data_hora ? parseISO(b.data_hora) : null;
-
-  //                   if (dateA && dateB) return compareDesc(dateA, dateB);
-  //                   if (dateA) return -1;
-  //                   if (dateB) return 1;
-  //                   return (a.descricao || '').localeCompare(b.descricao || '');
-  //               } catch {
-  //                   return (a.descricao || '').localeCompare(b.descricao || '');
-  //               }
-  //           });
-  //       }
-  //   }
-
-  //   return {
-  //       sellerSummaries: calculatedSellerSummaries,
-  //       skuFrequencies: calculatedSkuFrequencies,
-  //       topSellersForChart: calculatedTopSellersForChart,
-  //       productsChangedBySeller: calculatedProductsChangedBySeller
-  //   };
-  // }, [allProducts]);
-  // --- END ORIGINAL useMemo ---
+    return {
+        sellerSummaries: calculatedSellerSummaries,
+        skuFrequencies: calculatedSkuFrequencies,
+        topSellersForChart: calculatedTopSellersForChart,
+        productsChangedBySeller: calculatedProductsChangedBySeller
+    };
+  }, [allProducts]);
 
 
   if (isLoading) {
@@ -212,7 +198,7 @@ export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChang
           <CardHeader>
             <CardTitle className="flex items-center">
               <Package className="mr-2 h-5 w-5 text-primary" />
-              SKUs Mais Frequentemente Alterados
+              Top {TOP_N_SKUS_TABLE} SKUs Sinalizados com Alteração de Preço
             </CardTitle>
             <CardDescription>Carregando dados dos SKUs com mais alterações de preço sinalizadas...</CardDescription>
           </CardHeader>
@@ -247,7 +233,7 @@ export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChang
                     Análise de Alterações de Preço
                 </CardTitle>
                 <CardDescription>
-                    Não foram encontradas sinalizações de alteração de preço (baseado na flag 'change_price') nos dados atuais, ou os dados ainda estão carregando.
+                    Não foram encontradas sinalizações de alteração de preço (baseado na flag 'change_price') nos dados atuais.
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -291,7 +277,7 @@ export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChang
                       stroke="hsl(var(--muted-foreground))"
                       fontSize={12}
                       tickFormatter={(value) => typeof value === 'string' && value.length > 25 ? `${value.substring(0, 22)}...` : value}
-                      width={180}
+                      width={180} // Adjusted width for potentially longer names
                       interval={0}
                     />
                     <ChartTooltip
@@ -337,7 +323,7 @@ export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChang
                 </TableHeader>
                 <TableBody>
                   {skuFrequencies.map(skuItem => (
-                    <TableRow key={skuItem.sku}>
+                    <TableRow key={`sku-freq-${skuItem.sku}`}>
                       <TableCell className="hidden sm:table-cell">
                         <Image
                           src={skuItem.imagem || "https://placehold.co/50x50.png"}
@@ -406,7 +392,7 @@ export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChang
                                                 </TableHeader>
                                                 <TableBody>
                                                     {changedProductsForThisSeller.map((product, index) => (
-                                                        <TableRow key={`${product.id || product.sku}-${index}-${product.data_hora || Date.now()}-${Math.random()}`}>
+                                                        <TableRow key={`${product.id || product.sku || `prod-${index}`}-${product.data_hora || Date.now()}-${Math.random()}`}>
                                                             <TableCell className="hidden sm:table-cell">
                                                                 <Image
                                                                     src={product.imagem || "https://placehold.co/50x50.png"}
@@ -444,5 +430,3 @@ export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChang
     </div>
   );
 }
-
-    
