@@ -311,8 +311,7 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
                       <TableHead>Produto (SKU)</TableHead>
                       <TableHead>Vendedor (Marketplace)</TableHead>
                       <TableHead className="text-right">Seu Preço (Margem)</TableHead>
-                      <TableHead className="text-right">Preço Concorrente Mais Próximo</TableHead>
-                      <TableHead>Concorrente</TableHead>
+                      <TableHead>Próximo Concorrente (Preço)</TableHead>
                       <TableHead className="text-right">Ultima raspagem</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -341,13 +340,17 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
                           <div className="font-semibold text-green-600">R$ {item.sellerPrice.toFixed(2)}</div>
                           <div className="text-xs">{formatDifference(item.priceDifferenceToNext)}</div>
                         </TableCell>
-                        <TableCell className="text-right">
-                            {(item.priceDifferenceToNext !== null && item.priceDifferenceToNext !== undefined && item.nextCompetitorSellerName) ? `R$ ${(item.sellerPrice + item.priceDifferenceToNext).toFixed(2)}` : 'N/A'}
-                        </TableCell>
-                         <TableCell className="max-w-[120px] truncate" title={item.nextCompetitorSellerName || undefined}>
-                            {item.priceDifferenceToNext !== null && item.priceDifferenceToNext !== undefined 
-                                ? item.nextCompetitorSellerName || 'N/A'
-                                : 'Sem concorrente direto'}
+                        <TableCell>
+                           <div className="max-w-[150px] truncate" title={item.nextCompetitorSellerName || undefined}>
+                                {item.priceDifferenceToNext !== null && item.priceDifferenceToNext !== undefined 
+                                    ? item.nextCompetitorSellerName || 'N/A'
+                                    : 'Sem concorrente direto'}
+                           </div>
+                           {(item.priceDifferenceToNext !== null && item.priceDifferenceToNext !== undefined && item.nextCompetitorSellerName) && (
+                            <div className="text-xs text-muted-foreground">
+                                R$ {(item.sellerPrice + item.priceDifferenceToNext).toFixed(2)}
+                            </div>
+                           )}
                         </TableCell>
                         <TableCell className="text-right text-xs text-muted-foreground">{formatTableCellDateTime(item.data_hora)}</TableCell>
                       </TableRow>
