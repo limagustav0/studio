@@ -303,6 +303,10 @@ export default function HomePage() {
     return `${analysis_selectedInternalSkus.slice(0, 2).join(', ')} + ${analysis_selectedInternalSkus.length - 2} mais`;
   };
 
+  // Memoized Sets for faster "checked" prop calculation in dropdowns
+  const analysis_selectedSellersSet = useMemo(() => new Set(analysis_selectedSellers), [analysis_selectedSellers]);
+  const analysis_selectedInternalSkusSet = useMemo(() => new Set(analysis_selectedInternalSkus), [analysis_selectedInternalSkus]);
+
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -372,7 +376,7 @@ export default function HomePage() {
                                 {uniqueInternalSkuValues.map((sku) => (
                                 <DropdownMenuCheckboxItem
                                     key={`internal-sku-filter-${sku}`}
-                                    checked={analysis_selectedInternalSkus.includes(sku)}
+                                    checked={analysis_selectedInternalSkusSet.has(sku)}
                                     onCheckedChange={(checked) => {
                                     setAnalysis_selectedInternalSkus((prev) =>
                                         checked
@@ -422,7 +426,7 @@ export default function HomePage() {
                                 {uniqueSellersForAnalysis.map((seller) => (
                                 <DropdownMenuCheckboxItem
                                     key={seller}
-                                    checked={analysis_selectedSellers.includes(seller)}
+                                    checked={analysis_selectedSellersSet.has(seller)}
                                     onCheckedChange={(checked) => {
                                     setAnalysis_selectedSellers((prev) =>
                                         checked
@@ -531,3 +535,6 @@ export default function HomePage() {
     </div>
   );
 }
+
+
+    
