@@ -151,7 +151,6 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
   const consolidatedBuyboxesWon = winningSkus.size;
   const consolidatedBuyboxesLost = losingSkus.size;
   
-  // Sort consolidated product lists
   allLosingProducts.sort((a,b) => b.priceDifference - a.priceDifference || a.descricao.localeCompare(b.descricao));
   allWinningProducts.sort((a,b) => (a.priceDifferenceToNext ?? Infinity) - (b.priceDifferenceToNext ?? Infinity) || a.descricao.localeCompare(b.descricao));
 
@@ -241,8 +240,7 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
                   <TableRow>
                     <TableHead className="w-[60px] hidden sm:table-cell">Imagem</TableHead>
                     <TableHead>Produto (SKU)</TableHead>
-                    <TableHead>Vendedor</TableHead>
-                    <TableHead>Marketplace</TableHead>
+                    <TableHead>Vendedor (Marketplace)</TableHead>
                     <TableHead className="text-right">Seu Preço</TableHead>
                     <TableHead className="text-right">Preço Vencedor</TableHead>
                     <TableHead>Vencedor do Buybox</TableHead>
@@ -267,8 +265,10 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
                         <div className="font-medium max-w-xs truncate" title={item.descricao}>{item.descricao}</div>
                         <div className="text-xs text-muted-foreground">SKU: {item.sku}</div>
                       </TableCell>
-                      <TableCell className="max-w-[120px] truncate" title={item.sellerName}>{item.sellerName}</TableCell>
-                      <TableCell className="max-w-[120px] truncate" title={item.marketplace}>{item.marketplace}</TableCell>
+                      <TableCell>
+                        <div className="font-medium max-w-xs truncate" title={item.sellerName}>{item.sellerName}</div>
+                        <div className="text-xs text-muted-foreground max-w-xs truncate" title={item.marketplace}>{item.marketplace}</div>
+                      </TableCell>
                       <TableCell className="text-right">R$ {item.sellerPrice.toFixed(2)}</TableCell>
                       <TableCell className="text-right font-semibold text-green-600">R$ {item.winningPrice.toFixed(2)}</TableCell>
                       <TableCell className="max-w-[120px] truncate" title={item.winningSeller}>{item.winningSeller}</TableCell>
@@ -301,8 +301,7 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
                     <TableRow>
                       <TableHead className="w-[60px] hidden sm:table-cell">Imagem</TableHead>
                       <TableHead>Produto (SKU)</TableHead>
-                      <TableHead>Vendedor</TableHead>
-                      <TableHead>Marketplace</TableHead>
+                      <TableHead>Vendedor (Marketplace)</TableHead>
                       <TableHead className="text-right">Seu Preço</TableHead>
                       <TableHead className="text-right">Preço Concorrente Mais Próximo</TableHead>
                       <TableHead>Concorrente</TableHead>
@@ -327,8 +326,10 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
                           <div className="font-medium max-w-xs truncate" title={item.descricao}>{item.descricao}</div>
                           <div className="text-xs text-muted-foreground">SKU: {item.sku}</div>
                         </TableCell>
-                        <TableCell className="max-w-[120px] truncate" title={item.sellerName}>{item.sellerName}</TableCell>
-                        <TableCell className="max-w-[120px] truncate" title={item.marketplace}>{item.marketplace}</TableCell>
+                        <TableCell>
+                          <div className="font-medium max-w-xs truncate" title={item.sellerName}>{item.sellerName}</div>
+                          <div className="text-xs text-muted-foreground max-w-xs truncate" title={item.marketplace}>{item.marketplace}</div>
+                        </TableCell>
                         <TableCell className="text-right font-semibold text-green-600">R$ {item.sellerPrice.toFixed(2)}</TableCell>
                         <TableCell className="text-right">
                             {(item.priceDifferenceToNext !== null && item.priceDifferenceToNext !== undefined && item.nextCompetitorSellerName) ? `R$ ${(item.sellerPrice + item.priceDifferenceToNext).toFixed(2)}` : 'N/A'}
@@ -359,3 +360,4 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
     </Card>
   );
 }
+
