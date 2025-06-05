@@ -303,8 +303,6 @@ export const analyzeSellerPerformance = (
     const allListingsForThisSku = productsBySkuGlobal[sku] || [];
     
     if (allListingsForThisSku.length === 0) { 
-      // This case should ideally not happen if sellerProductForSku exists and is part of allProducts
-      // However, if it does, it means the seller is the only one for this SKU (or data is inconsistent)
       buyboxesWon++;
       productsWinningBuybox.push({
         sku: sellerProductForSku.sku,
@@ -329,7 +327,6 @@ export const analyzeSellerPerformance = (
         globalMinPrice = p.preco_final;
         winningSellerForSkuAtGlobalMin = p.loja;
       } else if (p.preco_final === globalMinPrice) {
-        // Prioritize the selected seller if tied for the win
         if (winningSellerForSkuAtGlobalMin !== selectedSellerName && p.loja === selectedSellerName) {
            winningSellerForSkuAtGlobalMin = selectedSellerName; 
         } else if (!winningSellerForSkuAtGlobalMin) { 
@@ -345,14 +342,16 @@ export const analyzeSellerPerformance = (
       let nextCompetitorPrice: number | null = null;
       let nextCompetitorName: string | null = null;
 
-      allListingsForThisSku
-        .filter(p => p.loja !== selectedSellerName) // Only competitors
+      const competitorsInSameMarketplace = allListingsForThisSku
+        .filter(p => p.loja !== selectedSellerName && p.marketplace === sellerProductForSku.marketplace);
+
+      competitorsInSameMarketplace
         .forEach(competitor => {
           if (nextCompetitorPrice === null || competitor.preco_final < nextCompetitorPrice) {
             nextCompetitorPrice = competitor.preco_final;
             nextCompetitorName = competitor.loja;
           } else if (competitor.preco_final === nextCompetitorPrice) {
-            // If multiple competitors at the same next price, just take the last one encountered for simplicity
+             // If multiple competitors at the same next price, just take one.
             nextCompetitorName = competitor.loja; 
           }
         });
@@ -457,3 +456,4 @@ export const generateUniqueProductSummaries = (products: Product[]): UniqueProdu
 
   return summaries.sort((a,b) => b.sellerCount - a.sellerCount || a.sku.localeCompare(b.sku));
 };
+
