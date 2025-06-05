@@ -27,7 +27,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 
 const ALL_MARKETPLACES_OPTION_VALUE = "--all-marketplaces--";
-const ALL_INTERNAL_SKUS_OPTION_VALUE = "--all-internal-skus--";
 const DEFAULT_SELLER_FOCUS = "HAIRPRO";
 const INTERNAL_SKUS_LOCAL_STORAGE_KEY = 'priceWiseInternalSkusMap';
 const SEARCH_DEBOUNCE_DELAY = 500; // milliseconds
@@ -43,7 +42,7 @@ export default function HomePage() {
 
   // State for "Análise Detalhada" Tab
   const [analysis_selectedMarketplace, setAnalysis_selectedMarketplace] = useState<string | null>(null);
-  const [analysis_selectedInternalSku, setAnalysis_selectedInternalSku] = useState<string | null>(null);
+  const [analysis_selectedInternalSkus, setAnalysis_selectedInternalSkus] = useState<string[]>([]);
   const [uniqueSellersForAnalysis, setUniqueSellersForAnalysis] = useState<string[]>([]);
   const [buyboxWinners, setBuyboxWinners] = useState<BuyboxWinner[]>([]);
   const [analysis_selectedSellers, setAnalysis_selectedSellers] = useState<string[]>([]);
@@ -136,21 +135,21 @@ export default function HomePage() {
     if (analysis_selectedMarketplace && analysis_selectedMarketplace !== ALL_MARKETPLACES_OPTION_VALUE) {
       filtered = filtered.filter(p => p.marketplace === analysis_selectedMarketplace);
     }
-    if (analysis_selectedInternalSku && analysis_selectedInternalSku !== ALL_INTERNAL_SKUS_OPTION_VALUE) {
+    if (analysis_selectedInternalSkus.length > 0) {
       const matchingPrincipalSkus = Object.entries(internalSkusMap)
-        .filter(([_, internalSkuVal]) => internalSkuVal === analysis_selectedInternalSku)
+        .filter(([_, internalSkuVal]) => analysis_selectedInternalSkus.includes(internalSkuVal))
         .map(([principalSku, _]) => principalSku);
       
       if (matchingPrincipalSkus.length > 0) {
         filtered = filtered.filter(p => matchingPrincipalSkus.includes(p.sku));
       } else {
-        // If an internal SKU is selected but it maps to no principal SKUs,
-        // or the map is empty, no products will match this SKU filter.
+         // If selected internal SKUs map to no principal SKUs, or the map is empty,
+        // no products will match this SKU filter.
         filtered = [];
       }
     }
     return filtered;
-  }, [allProducts, analysis_selectedMarketplace, analysis_selectedInternalSku, internalSkusMap]);
+  }, [allProducts, analysis_selectedMarketplace, analysis_selectedInternalSkus, internalSkusMap]);
 
   // Effects for "Análise Detalhada" Tab - Seller list and default selection
   useEffect(() => {
@@ -219,11 +218,6 @@ export default function HomePage() {
   const handleAnalysisMarketplaceChange = (value: string) => {
     const newMarketplace = value === ALL_MARKETPLACES_OPTION_VALUE ? null : value;
     setAnalysis_selectedMarketplace(newMarketplace);
-  };
-
-  const handleAnalysisInternalSkuChange = (value: string) => {
-    const newInternalSku = value === ALL_INTERNAL_SKUS_OPTION_VALUE ? null : value;
-    setAnalysis_selectedInternalSku(newInternalSku);
   };
 
   const uniqueInternalSkuValues = useMemo(() => {
@@ -341,6 +335,16 @@ export default function HomePage() {
     return `${analysis_selectedSellers.slice(0, 2).join(', ')} + ${analysis_selectedSellers.length - 2} mais`;
   };
 
+  const getSelectedInternalSkusText = () => {
+    if (analysis_selectedInternalSkus.length === 0) {
+      return "Selecione SKU(s) Interno(s)...";
+    }
+    if (analysis_selectedInternalSkus.length <= 2) {
+      return analysis_selectedInternalSkus.join(', ');
+    }
+    return `${analysis_selectedInternalSkus.slice(0, 2).join(', ')} + ${analysis_selectedInternalSkus.length - 2} mais`;
+  };
+
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -398,19 +402,40 @@ export default function HomePage() {
                         </Select>
                     </div>
                     <div>
-                        <Label htmlFor="analysis-internal-sku-filter" className="text-sm font-medium">Filtrar por SKU Interno</Label>
-                        <Select
-                            value={analysis_selectedInternalSku || ALL_INTERNAL_SKUS_OPTION_VALUE}
-                            onValueChange={handleAnalysisInternalSkuChange}
-                        >
-                            <SelectTrigger id="analysis-internal-sku-filter" className="mt-1">
-                            <SelectValue placeholder="Selecione um SKU interno..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                            <SelectItem value={ALL_INTERNAL_SKUS_OPTION_VALUE}>Todos os SKUs Internos</SelectItem>
-                            {uniqueInternalSkuValues.map(sku => <SelectItem key={`internal-sku-filter-${sku}`} value={sku}>{sku}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
+                        <Label htmlFor="analysis-internal-sku-filter" className="text-sm font-medium">Filtrar por SKU(s) Interno(s)</Label>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" className="w-full justify-between mt-1">
+                                <span className="truncate pr-2">{getSelectedInternalSkusText()}</span>
+                                <ChevronDown className="h-4 w-4 opacity-50" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
+                                <DropdownMenuLabel>SKUs Internos Disponíveis</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                 {uniqueInternalSkuValues.length === 0 && (
+                                    <p className="px-2 py-1.5 text-sm text-muted-foreground">Nenhum SKU interno mapeado.</p>
+                                 )}
+                                <ScrollArea className="h-[200px]">
+                                {uniqueInternalSkuValues.map((sku) => (
+                                <DropdownMenuCheckboxItem
+                                    key={`internal-sku-filter-${sku}`}
+                                    checked={analysis_selectedInternalSkus.includes(sku)}
+                                    onCheckedChange={(checked) => {
+                                    setAnalysis_selectedInternalSkus((prev) =>
+                                        checked
+                                        ? [...prev, sku]
+                                        : prev.filter((s) => s !== sku)
+                                    );
+                                    }}
+                                    onSelect={(e) => e.preventDefault()} 
+                                >
+                                    {sku}
+                                </DropdownMenuCheckboxItem>
+                                ))}
+                                </ScrollArea>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
                    </div>
                 </CardContent>
@@ -478,8 +503,8 @@ export default function HomePage() {
             <section aria-labelledby="buybox-analysis-title">
               <h2 id="buybox-analysis-title" className="sr-only">Análise de Buybox (Considerando Filtros de Análise)</h2>
               <BuyboxWinnersDisplay buyboxWinners={buyboxWinners} isLoading={isLoading && buyboxWinners.length === 0 && analysis_productsFilteredByMarketplace.length > 0} />
-              {(isLoading && analysis_productsFilteredByMarketplace.length === 0 && allProducts.length > 0 && (analysis_selectedMarketplace !== null || analysis_selectedInternalSku !== null)) && <p className="text-center text-muted-foreground">Carregando dados de buybox...</p>}
-              {(!isLoading && analysis_productsFilteredByMarketplace.length === 0 && allProducts.length > 0 && (analysis_selectedMarketplace !== null || analysis_selectedInternalSku !== null)) &&
+              {(isLoading && analysis_productsFilteredByMarketplace.length === 0 && allProducts.length > 0 && (analysis_selectedMarketplace !== null || analysis_selectedInternalSkus.length > 0)) && <p className="text-center text-muted-foreground">Carregando dados de buybox...</p>}
+              {(!isLoading && analysis_productsFilteredByMarketplace.length === 0 && allProducts.length > 0 && (analysis_selectedMarketplace !== null || analysis_selectedInternalSkus.length > 0)) &&
                 <Card className="shadow-lg">
                   <CardHeader>
                     <CardTitle>Vencedores de Buybox por Loja</CardTitle>
@@ -618,5 +643,7 @@ export default function HomePage() {
     </div>
   );
 }
+
+    
 
     
