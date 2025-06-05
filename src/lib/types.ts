@@ -9,6 +9,7 @@ export interface Product {
   descricao: string;
   avaliacao: number; // e.g., 0-5
   imagem: string;
+  change_price?: boolean; // Added for price change tracking
 }
 
 export interface PriceTrendProductInfo {

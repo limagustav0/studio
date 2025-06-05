@@ -17,7 +17,15 @@ interface ApiProduct {
   num_avaliacoes?: string;
   link_produto?: string;
   imagem: string;
+  change_price?: any; // Can be boolean, string "true"/"false", number 1/0
 }
+
+const parseChangePrice = (value: any): boolean => {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') return value.toLowerCase() === 'true';
+  if (typeof value === 'number') return value === 1;
+  return false; // Default to false if undefined, null, or unknown format
+};
 
 export const fetchData = async (): Promise<Product[]> => {
   const apiUrl = '/api/price-data'; 
@@ -52,7 +60,8 @@ export const fetchData = async (): Promise<Product[]> => {
         marketplace: apiProduct.marketplace,
         descricao: apiProduct.descricao,
         avaliacao: parseFloat(apiProduct.avaliacao) || 0,
-        imagem: apiProduct.imagem || 'https://placehold.co/300x200.png', 
+        imagem: apiProduct.imagem || 'https://placehold.co/300x200.png',
+        change_price: parseChangePrice(apiProduct.change_price),
       };
     });
 

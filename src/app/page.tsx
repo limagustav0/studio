@@ -10,6 +10,7 @@ import { SellerPerformanceDashboard } from '@/components/SellerPerformanceDashbo
 import { ProductSummaryTable } from '@/components/ProductSummaryTable';
 import { SearchBar } from '@/components/SearchBar';
 import { SkuImportTab } from '@/components/SkuImportTab';
+import { PriceChangeSellersDisplay } from '@/components/PriceChangeSellersDisplay'; // Novo componente
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/hooks/use-toast";
 import { useDebounce } from "@/hooks/use-debounce";
@@ -18,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Filter, BarChartBig, Search, Package, LayoutGrid, ChevronDown, Users, UploadCloud } from 'lucide-react';
+import { Filter, BarChartBig, Search, Package, LayoutGrid, ChevronDown, Users, UploadCloud, Repeat } from 'lucide-react'; // Adicionado Repeat
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -313,7 +314,7 @@ export default function HomePage() {
       <AppHeader />
       <main className="flex-grow container mx-auto px-4 py-8 space-y-8">
         <Tabs defaultValue="analysis" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-6 bg-card p-1 rounded-lg">
+          <TabsList className="grid w-full grid-cols-4 mb-6 bg-card p-1 rounded-lg">
             <TabsTrigger value="analysis" className="py-3 text-base hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg">
                 <span className="flex items-center gap-2">
                     <BarChartBig className="h-5 w-5" />
@@ -324,6 +325,12 @@ export default function HomePage() {
                 <span className="flex items-center gap-2">
                     <LayoutGrid className="h-5 w-5" />
                     <span>Visão Geral do Produto</span>
+                </span>
+            </TabsTrigger>
+            <TabsTrigger value="price-change-sellers" className="py-3 text-base hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg">
+                <span className="flex items-center gap-2">
+                    <Repeat className="h-5 w-5" />
+                    <span>Vendedores c/ Mudanças</span>
                 </span>
             </TabsTrigger>
             <TabsTrigger value="sku-import" className="py-3 text-base hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg">
@@ -517,6 +524,13 @@ export default function HomePage() {
               onInternalSkuChange={handleInternalSkuChange}
             />
 
+          </TabsContent>
+
+          <TabsContent value="price-change-sellers" className="space-y-6">
+            <PriceChangeSellersDisplay 
+              allProducts={allProducts}
+              isLoading={isLoading && allProducts.length === 0}
+            />
           </TabsContent>
 
           <TabsContent value="sku-import" className="space-y-6">
