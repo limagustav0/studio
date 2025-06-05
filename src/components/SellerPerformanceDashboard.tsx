@@ -274,7 +274,7 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
                         </div>
                         <div>
                           <span className="text-xs text-muted-foreground mr-1">Seu:</span>
-                          <span className="text-blue-600">R$ {item.sellerPrice.toFixed(2)}</span>
+                          <span className="font-semibold text-blue-600">R$ {item.sellerPrice.toFixed(2)}</span>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -310,10 +310,9 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
                       <TableHead className="w-[60px] hidden sm:table-cell">Imagem</TableHead>
                       <TableHead>Produto (SKU)</TableHead>
                       <TableHead>Vendedor (Marketplace)</TableHead>
-                      <TableHead className="text-right">Seu Preço</TableHead>
+                      <TableHead className="text-right">Seu Preço (Margem)</TableHead>
                       <TableHead className="text-right">Preço Concorrente Mais Próximo</TableHead>
                       <TableHead>Concorrente</TableHead>
-                      <TableHead className="text-right">Diferença p/ Próximo</TableHead>
                       <TableHead className="text-right">Ultima raspagem</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -338,7 +337,10 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
                           <div className="font-medium max-w-xs truncate" title={item.sellerName}>{item.sellerName}</div>
                           <div className="text-xs text-muted-foreground max-w-xs truncate" title={item.marketplace}>{item.marketplace}</div>
                         </TableCell>
-                        <TableCell className="text-right font-semibold text-green-600">R$ {item.sellerPrice.toFixed(2)}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="font-semibold text-green-600">R$ {item.sellerPrice.toFixed(2)}</div>
+                          <div className="text-xs">{formatDifference(item.priceDifferenceToNext)}</div>
+                        </TableCell>
                         <TableCell className="text-right">
                             {(item.priceDifferenceToNext !== null && item.priceDifferenceToNext !== undefined && item.nextCompetitorSellerName) ? `R$ ${(item.sellerPrice + item.priceDifferenceToNext).toFixed(2)}` : 'N/A'}
                         </TableCell>
@@ -347,7 +349,6 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
                                 ? item.nextCompetitorSellerName || 'N/A'
                                 : 'Sem concorrente direto'}
                         </TableCell>
-                        <TableCell className="text-right">{formatDifference(item.priceDifferenceToNext)}</TableCell>
                         <TableCell className="text-right text-xs text-muted-foreground">{formatTableCellDateTime(item.data_hora)}</TableCell>
                       </TableRow>
                     ))}
