@@ -6,12 +6,14 @@ import type { UniqueProductSummary } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input'; // Importar Input
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 interface ProductSummaryTableProps {
   summaries: UniqueProductSummary[];
   isLoading: boolean;
+  onInternalSkuChange: (productSku: string, newInternalSku: string) => void; // Nova prop
 }
 
 const formatSummaryTableDate = (isoDateString: string | null | undefined) => {
@@ -25,7 +27,7 @@ const formatSummaryTableDate = (isoDateString: string | null | undefined) => {
 };
 
 
-export function ProductSummaryTable({ summaries, isLoading }: ProductSummaryTableProps) {
+export function ProductSummaryTable({ summaries, isLoading, onInternalSkuChange }: ProductSummaryTableProps) {
   if (isLoading) {
     return (
       <div className="rounded-md border">
@@ -34,6 +36,7 @@ export function ProductSummaryTable({ summaries, isLoading }: ProductSummaryTabl
             <TableRow>
               <TableHead className="w-[80px] hidden sm:table-cell">Imagem</TableHead>
               <TableHead>Produto (SKU)</TableHead>
+              <TableHead>SKU Interno</TableHead>
               <TableHead>Marketplaces</TableHead>
               <TableHead className="text-center">Sellers</TableHead>
               <TableHead className="text-right">Menor Preço</TableHead>
@@ -49,6 +52,7 @@ export function ProductSummaryTable({ summaries, isLoading }: ProductSummaryTabl
                   <Skeleton className="h-4 w-3/4 mb-1" />
                   <Skeleton className="h-3 w-1/2" />
                 </TableCell>
+                <TableCell><Skeleton className="h-8 w-24" /></TableCell>
                 <TableCell><Skeleton className="h-4 w-2/3" /></TableCell>
                 <TableCell className="text-center"><Skeleton className="h-4 w-8 mx-auto" /></TableCell>
                 <TableCell className="text-right"><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
@@ -73,6 +77,7 @@ export function ProductSummaryTable({ summaries, isLoading }: ProductSummaryTabl
           <TableRow>
             <TableHead className="w-[80px] hidden sm:table-cell">Imagem</TableHead>
             <TableHead>Produto (SKU)</TableHead>
+            <TableHead>SKU Interno</TableHead>
             <TableHead>Marketplaces</TableHead>
             <TableHead className="text-center">Sellers</TableHead>
             <TableHead className="text-right">Menor Preço</TableHead>
@@ -98,6 +103,14 @@ export function ProductSummaryTable({ summaries, isLoading }: ProductSummaryTabl
                 <div className="text-xs text-muted-foreground">SKU: {summary.sku}</div>
               </TableCell>
               <TableCell>
+                <Input
+                  value={summary.internalSku || ''}
+                  onChange={(e) => onInternalSkuChange(summary.sku, e.target.value)}
+                  placeholder="Digitar SKU interno..."
+                  className="text-sm h-8 w-32" // Ajuste de tamanho se necessário
+                />
+              </TableCell>
+              <TableCell>
                 <div className="flex flex-wrap gap-1 max-w-xs">
                   {summary.marketplaces.map(mp => (
                     <Badge key={mp} variant="secondary" className="text-xs">{mp}</Badge>
@@ -116,3 +129,4 @@ export function ProductSummaryTable({ summaries, isLoading }: ProductSummaryTabl
     </div>
   );
 }
+

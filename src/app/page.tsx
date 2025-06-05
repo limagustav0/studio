@@ -51,6 +51,7 @@ export default function HomePage() {
   const [uniqueProductSummaries, setUniqueProductSummaries] = useState<UniqueProductSummary[]>([]);
   const [overviewTab_selectedMarketplace, setOverviewTab_selectedMarketplace] = useState<string | null>(null);
   const [overviewTab_searchTerm, setOverviewTab_searchTerm] = useState<string>('');
+  const [internalSkusMap, setInternalSkusMap] = useState<Record<string, string>>({});
 
 
   useEffect(() => {
@@ -198,6 +199,12 @@ export default function HomePage() {
     return `Exibindo ${count} produto(s) (todos os marketplaces).`;
   }, [allProductsTab_filteredProducts, allProductsTab_selectedMarketplace, allProductsTab_searchTerm]);
 
+  const handleInternalSkuChange = (productSku: string, newInternalSku: string) => {
+    setInternalSkusMap(prevMap => ({
+      ...prevMap,
+      [productSku]: newInternalSku,
+    }));
+  };
 
   // Memoized summaries for "Visão Geral do Produto" Tab
   const overviewTab_filteredSummaries = useMemo(() => {
@@ -214,8 +221,11 @@ export default function HomePage() {
         summary.sku.toLowerCase().includes(lowerSearchTerm)
       );
     }
-    return filtered;
-  }, [uniqueProductSummaries, overviewTab_selectedMarketplace, overviewTab_searchTerm]);
+    return filtered.map(summary => ({
+      ...summary,
+      internalSku: internalSkusMap[summary.sku] || '', 
+    }));
+  }, [uniqueProductSummaries, overviewTab_selectedMarketplace, overviewTab_searchTerm, internalSkusMap]);
 
   const handleOverviewMarketplaceChange = (value: string) => {
     const newMarketplace = value === ALL_MARKETPLACES_OPTION_VALUE ? null : value;
@@ -273,6 +283,7 @@ export default function HomePage() {
                     <CardDescription>Aplique filtros para refinar os dados exibidos nas seções de Análise de Desempenho e Vencedores de Buybox abaixo.</CardDescription>
                 </CardHeader>
                 <CardContent className="px-2 sm:px-6 space-y-4">
+                   <div className="grid grid-cols-1 md:grid-cols-1 gap-4"> {/* Alterado para md:grid-cols-1 */}
                     <div>
                         <Label htmlFor="analysis-marketplace-filter" className="text-sm font-medium">Filtrar por Marketplace</Label>
                         <Select
@@ -288,6 +299,7 @@ export default function HomePage() {
                             </SelectContent>
                         </Select>
                     </div>
+                   </div>
                 </CardContent>
             </Card>
 
@@ -405,7 +417,11 @@ export default function HomePage() {
               {overviewProductCountMessage}
             </div>
 
-            <ProductSummaryTable summaries={overviewTab_filteredSummaries} isLoading={isLoading && uniqueProductSummaries.length === 0} />
+            <ProductSummaryTable
+              summaries={overviewTab_filteredSummaries}
+              isLoading={isLoading && uniqueProductSummaries.length === 0}
+              onInternalSkuChange={handleInternalSkuChange}
+            />
 
           </TabsContent>
 

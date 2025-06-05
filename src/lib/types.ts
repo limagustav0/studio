@@ -84,4 +84,6 @@ export interface UniqueProductSummary {
   sellerCount: number; // Number of unique sellers for this SKU
   minPrice: number;
   maxPrice: number;
+  internalSku?: string; // Novo campo para SKU interno
 }
+
