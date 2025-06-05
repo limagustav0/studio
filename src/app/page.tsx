@@ -302,7 +302,7 @@ export default function HomePage() {
                                 searchTerm={analysis_productSearchTerm}
                                 onSearchChange={setAnalysis_productSearchTerm}
                                 placeholder="Digite o nome do produto..."
-                                // Consider adding a unique id if SearchBar needs it for aria attributes
+                                className="mt-1"
                             />
                         </div>
                     </div>
@@ -411,6 +411,7 @@ export default function HomePage() {
                     searchTerm={overviewTab_searchTerm}
                     onSearchChange={setOverviewTab_searchTerm}
                     placeholder="Pesquisar por descrição ou SKU..."
+                    className="mt-1"
                   />
                 </div>
               </CardContent>
@@ -452,6 +453,7 @@ export default function HomePage() {
                             searchTerm={allProductsTab_searchTerm}
                             onSearchChange={setAllProductsTab_searchTerm}
                             placeholder="Pesquisar por descrição, SKU ou loja..."
+                            className="mt-1"
                         />
                     </div>
                 </CardContent>
@@ -498,6 +500,8 @@ export default function HomePage() {
     </div>
   );
 }
+
+    
 
     
 
