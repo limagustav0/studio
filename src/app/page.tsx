@@ -318,16 +318,28 @@ export default function HomePage() {
         <Tabs defaultValue="analysis" className="w-full">
           <TabsList className="grid w-full grid-cols-4 mb-6 bg-card p-1 rounded-lg">
             <TabsTrigger value="analysis" className="py-3 text-base hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg">
-                <BarChartBig className="mr-2 h-5 w-5" /> Análise Detalhada
+                <span className="flex items-center gap-2">
+                    <BarChartBig className="h-5 w-5" />
+                    <span>Análise Detalhada</span>
+                </span>
             </TabsTrigger>
             <TabsTrigger value="product-overview" className="py-3 text-base hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg">
-                <LayoutGrid className="mr-2 h-5 w-5" /> Visão Geral do Produto
+                <span className="flex items-center gap-2">
+                    <LayoutGrid className="h-5 w-5" />
+                    <span>Visão Geral do Produto</span>
+                </span>
             </TabsTrigger>
             <TabsTrigger value="all-products" className="py-3 text-base hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg">
-                <Package className="mr-2 h-5 w-5" /> Todos os Produtos
+                <span className="flex items-center gap-2">
+                    <Package className="h-5 w-5" />
+                    <span>Todos os Produtos</span>
+                </span>
             </TabsTrigger>
             <TabsTrigger value="sku-import" className="py-3 text-base hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg">
-                <UploadCloud className="mr-2 h-5 w-5" /> Importar SKUs Internos
+                <span className="flex items-center gap-2">
+                    <UploadCloud className="h-5 w-5" />
+                    <span>Importar SKUs Internos</span>
+                </span>
             </TabsTrigger>
           </TabsList>
 
