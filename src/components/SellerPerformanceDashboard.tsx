@@ -271,7 +271,7 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
                       <TableCell className="text-right">
                         <div>
                           <span className="text-xs text-muted-foreground mr-1">Seu:</span>
-                          <span className="text-green-600">R$ {item.sellerPrice.toFixed(2)}</span>
+                          <span className="text-blue-600">R$ {item.sellerPrice.toFixed(2)}</span>
                         </div>
                         <div>
                           <span className="text-xs text-muted-foreground mr-1">Vencedor:</span>
