@@ -119,11 +119,18 @@ export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChang
                  return compareDesc(parseISO(a.data_hora), parseISO(b.data_hora));
             } catch { return 0; }
         });
-        const latestProduct = sortedProducts[0] || products[0] || {descricao: 'N/A', imagem: ''};
+        
+        let latestProduct: Product | null = null;
+        if (sortedProducts.length > 0) {
+            latestProduct = sortedProducts[0];
+        } else if (products.length > 0) { // Fallback if sorting failed
+            latestProduct = products[0];
+        }
+
         return {
           sku,
-          descricao: latestProduct.descricao,
-          imagem: latestProduct.imagem,
+          descricao: latestProduct?.descricao || 'N/A',
+          imagem: latestProduct?.imagem || '',
           changeInstanceCount: products.length,
         };
       })
@@ -142,10 +149,19 @@ export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChang
     for (const seller in calculatedProductsChangedBySeller) {
         calculatedProductsChangedBySeller[seller].sort((a, b) => {
             try {
-                if (!a.data_hora || !b.data_hora) return a.descricao.localeCompare(b.descricao);
-                return compareDesc(parseISO(a.data_hora), parseISO(b.data_hora));
+                const dateA = a.data_hora ? parseISO(a.data_hora) : null;
+                const dateB = b.data_hora ? parseISO(b.data_hora) : null;
+
+                if (dateA && dateB) {
+                    return compareDesc(dateA, dateB);
+                } else if (dateA) {
+                    return -1; 
+                } else if (dateB) {
+                    return 1;  
+                }
+                return (a.descricao || '').localeCompare(b.descricao || '');
             } catch {
-                return a.descricao.localeCompare(b.descricao);
+                return (a.descricao || '').localeCompare(b.descricao || '');
             }
         });
     }
@@ -259,7 +275,7 @@ export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChang
                       width={150}
                       interval={0}
                     />
-                    <Tooltip
+                    <ChartTooltip
                       cursor={{ fill: "hsl(var(--muted))" }}
                       content={<ChartTooltipContent indicator="dot" />}
                     />
