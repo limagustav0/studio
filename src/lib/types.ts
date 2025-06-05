@@ -50,6 +50,7 @@ export interface ProductLosingBuyboxInfo {
   winningSeller: string;
   priceDifference: number;
   marketplace: string;
+  internalSku?: string; // Added internal SKU
 }
 
 export interface ProductWinningBuyboxInfo {
@@ -63,6 +64,7 @@ export interface ProductWinningBuyboxInfo {
   priceDifferenceToNext?: number | null;
   nextCompetitorSellerName?: string | null; // Name of the seller with the next closest price
   marketplace: string;
+  internalSku?: string; // Added internal SKU
 }
 
 export interface SellerAnalysisMetrics {
@@ -84,6 +86,5 @@ export interface UniqueProductSummary {
   sellerCount: number; // Number of unique sellers for this SKU
   minPrice: number;
   maxPrice: number;
-  internalSku?: string; // Novo campo para SKU interno
+  internalSku?: string; 
 }
-

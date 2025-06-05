@@ -262,6 +262,9 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
                       <TableCell>
                         <div className="font-medium max-w-xs truncate" title={item.descricao}>{item.descricao}</div>
                         <div className="text-xs text-muted-foreground">SKU: {item.sku}</div>
+                        {item.internalSku && (
+                          <div className="text-xs text-muted-foreground mt-0.5">SKU Interno: {item.internalSku}</div>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="font-medium max-w-xs truncate" title={item.sellerName}>{item.sellerName}</div>
@@ -331,6 +334,9 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
                         <TableCell>
                           <div className="font-medium max-w-xs truncate" title={item.descricao}>{item.descricao}</div>
                           <div className="text-xs text-muted-foreground">SKU: {item.sku}</div>
+                          {item.internalSku && (
+                            <div className="text-xs text-muted-foreground mt-0.5">SKU Interno: {item.internalSku}</div>
+                          )}
                         </TableCell>
                         <TableCell>
                           <div className="font-medium max-w-xs truncate" title={item.sellerName}>{item.sellerName}</div>
@@ -346,7 +352,7 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
                                     ? item.nextCompetitorSellerName || 'N/A'
                                     : 'Sem concorrente direto'}
                            </div>
-                           {(item.priceDifferenceToNext !== null && item.priceDifferenceToNext !== undefined && item.nextCompetitorSellerName) && (
+                           {(item.priceDifferenceToNext !== null && item.priceDifferenceToNext !== undefined && item.nextCompetitorSellerName && (item.sellerPrice + item.priceDifferenceToNext) > 0) && (
                             <div className="text-xs text-muted-foreground">
                                 R$ {(item.sellerPrice + item.priceDifferenceToNext).toFixed(2)}
                             </div>
@@ -372,4 +378,3 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
     </Card>
   );
 }
-

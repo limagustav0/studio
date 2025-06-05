@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from 'react';
-import type { Product, BuyboxWinner, SellerAnalysisMetrics, UniqueProductSummary } from '@/lib/types';
+import type { Product, BuyboxWinner, SellerAnalysisMetrics, UniqueProductSummary, ProductLosingBuyboxInfo, ProductWinningBuyboxInfo } from '@/lib/types';
 import { fetchData, getUniqueSellers, calculateBuyboxWins, analyzeSellerPerformance, getUniqueMarketplaces, generateUniqueProductSummaries } from '@/lib/data';
 import { AppHeader } from '@/components/AppHeader';
 import { BuyboxWinnersDisplay } from '@/components/BuyboxWinnersDisplay';
@@ -31,6 +31,7 @@ export default function HomePage() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const [internalSkusMap, setInternalSkusMap] = useState<Record<string, string>>({});
 
   // Common state for marketplace lists
   const [uniqueMarketplaces, setUniqueMarketplaces] = useState<string[]>([]);
@@ -51,7 +52,6 @@ export default function HomePage() {
   const [uniqueProductSummaries, setUniqueProductSummaries] = useState<UniqueProductSummary[]>([]);
   const [overviewTab_selectedMarketplace, setOverviewTab_selectedMarketplace] = useState<string | null>(null);
   const [overviewTab_searchTerm, setOverviewTab_searchTerm] = useState<string>('');
-  const [internalSkusMap, setInternalSkusMap] = useState<Record<string, string>>({});
 
 
   useEffect(() => {
@@ -136,7 +136,22 @@ export default function HomePage() {
       );
       Promise.all(promises)
         .then(results => {
-          setAnalysis_sellerPerformanceData(results.filter(r => r !== null) as SellerAnalysisMetrics[]);
+          const augmentedResults = results.map(metric => {
+            if (!metric) return null;
+            return {
+              ...metric,
+              productsLosingBuybox: metric.productsLosingBuybox.map(p => ({
+                ...p,
+                internalSku: internalSkusMap[p.sku] || '',
+              })),
+              productsWinningBuybox: metric.productsWinningBuybox.map(p => ({
+                ...p,
+                internalSku: internalSkusMap[p.sku] || '',
+              })),
+            };
+          }).filter(r => r !== null) as SellerAnalysisMetrics[];
+
+          setAnalysis_sellerPerformanceData(augmentedResults);
           setIsSellerPerformanceLoading(false);
         })
         .catch(error => {
@@ -153,7 +168,7 @@ export default function HomePage() {
       setAnalysis_sellerPerformanceData([]); 
       setIsSellerPerformanceLoading(false);
     }
-  }, [analysis_selectedSellers, analysis_productsFilteredByMarketplace, toast]);
+  }, [analysis_selectedSellers, analysis_productsFilteredByMarketplace, toast, internalSkusMap]);
 
 
   const handleAnalysisMarketplaceChange = (value: string) => {
@@ -283,7 +298,7 @@ export default function HomePage() {
                     <CardDescription>Aplique filtros para refinar os dados exibidos nas seções de Análise de Desempenho e Vencedores de Buybox abaixo.</CardDescription>
                 </CardHeader>
                 <CardContent className="px-2 sm:px-6 space-y-4">
-                   <div className="grid grid-cols-1 md:grid-cols-1 gap-4"> {/* Alterado para md:grid-cols-1 */}
+                   <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
                     <div>
                         <Label htmlFor="analysis-marketplace-filter" className="text-sm font-medium">Filtrar por Marketplace</Label>
                         <Select
@@ -502,11 +517,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-    
-
-    
-
-    
-
-    
