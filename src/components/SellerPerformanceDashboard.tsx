@@ -3,7 +3,7 @@ import type { SellerAnalysisMetrics, ProductLosingBuyboxInfo, ProductWinningBuyb
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TrendingUp, TrendingDown, ListChecks, PackageSearch, AlertTriangle, Info, CheckCircle2, Clock, Users } from 'lucide-react';
+import { TrendingUp, TrendingDown, ListChecks, PackageSearch, AlertTriangle, Info, CheckCircle2, Clock, Users, Store } from 'lucide-react';
 import Image from 'next/image';
 import { format as formatDate, parseISO, compareDesc } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -242,6 +242,7 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
                     <TableHead className="w-[60px] hidden sm:table-cell">Imagem</TableHead>
                     <TableHead>Produto (SKU)</TableHead>
                     <TableHead>Vendedor</TableHead>
+                    <TableHead>Marketplace</TableHead>
                     <TableHead className="text-right">Seu Preço</TableHead>
                     <TableHead className="text-right">Preço Vencedor</TableHead>
                     <TableHead>Vencedor do Buybox</TableHead>
@@ -251,7 +252,7 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
                 </TableHeader>
                 <TableBody>
                   {allLosingProducts.map((item, idx) => (
-                    <TableRow key={`losing-${item.sku}-${item.sellerName}-${idx}`}>
+                    <TableRow key={`losing-${item.sku}-${item.sellerName}-${item.marketplace}-${idx}`}>
                       <TableCell className="hidden sm:table-cell">
                         <Image
                           src={item.imagem || "https://placehold.co/50x50.png"}
@@ -267,6 +268,7 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
                         <div className="text-xs text-muted-foreground">SKU: {item.sku}</div>
                       </TableCell>
                       <TableCell className="max-w-[120px] truncate" title={item.sellerName}>{item.sellerName}</TableCell>
+                      <TableCell className="max-w-[120px] truncate" title={item.marketplace}>{item.marketplace}</TableCell>
                       <TableCell className="text-right">R$ {item.sellerPrice.toFixed(2)}</TableCell>
                       <TableCell className="text-right font-semibold text-green-600">R$ {item.winningPrice.toFixed(2)}</TableCell>
                       <TableCell className="max-w-[120px] truncate" title={item.winningSeller}>{item.winningSeller}</TableCell>
@@ -300,6 +302,7 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
                       <TableHead className="w-[60px] hidden sm:table-cell">Imagem</TableHead>
                       <TableHead>Produto (SKU)</TableHead>
                       <TableHead>Vendedor</TableHead>
+                      <TableHead>Marketplace</TableHead>
                       <TableHead className="text-right">Seu Preço</TableHead>
                       <TableHead className="text-right">Preço Concorrente Mais Próximo</TableHead>
                       <TableHead>Concorrente</TableHead>
@@ -309,7 +312,7 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
                   </TableHeader>
                   <TableBody>
                     {allWinningProducts.map((item, idx) => (
-                      <TableRow key={`winning-${item.sku}-${item.sellerName}-${idx}`}>
+                      <TableRow key={`winning-${item.sku}-${item.sellerName}-${item.marketplace}-${idx}`}>
                         <TableCell className="hidden sm:table-cell">
                           <Image
                             src={item.imagem || "https://placehold.co/50x50.png"}
@@ -325,6 +328,7 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
                           <div className="text-xs text-muted-foreground">SKU: {item.sku}</div>
                         </TableCell>
                         <TableCell className="max-w-[120px] truncate" title={item.sellerName}>{item.sellerName}</TableCell>
+                        <TableCell className="max-w-[120px] truncate" title={item.marketplace}>{item.marketplace}</TableCell>
                         <TableCell className="text-right font-semibold text-green-600">R$ {item.sellerPrice.toFixed(2)}</TableCell>
                         <TableCell className="text-right">
                             {item.priceDifferenceToNext !== null && item.priceDifferenceToNext !== undefined ? `R$ ${(item.sellerPrice + item.priceDifferenceToNext).toFixed(2)}` : 'N/A'}
@@ -355,3 +359,4 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
     </Card>
   );
 }
+

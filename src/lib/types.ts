@@ -49,6 +49,7 @@ export interface ProductLosingBuyboxInfo {
   winningPrice: number;
   winningSeller: string;
   priceDifference: number;
+  marketplace: string; // Added marketplace
 }
 
 export interface ProductWinningBuyboxInfo {
@@ -60,6 +61,7 @@ export interface ProductWinningBuyboxInfo {
   winningPrice: number;
   winningSeller: string;
   priceDifferenceToNext?: number | null;
+  marketplace: string; // Added marketplace here as well for consistency, even if not explicitly requested for this table yet
 }
 
 export interface SellerAnalysisMetrics {

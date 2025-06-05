@@ -315,6 +315,7 @@ export const analyzeSellerPerformance = (
         winningPrice: sellerProductForSku.preco_final,
         winningSeller: selectedSellerName,
         priceDifferenceToNext: null, 
+        marketplace: sellerProductForSku.marketplace,
       });
       return; 
     }
@@ -362,6 +363,7 @@ export const analyzeSellerPerformance = (
         winningPrice: sellerPriceForSku, 
         winningSeller: selectedSellerName, 
         priceDifferenceToNext: priceDifferenceToNext,
+        marketplace: sellerProductForSku.marketplace,
       });
     } else { 
       buyboxesLost++;
@@ -374,6 +376,7 @@ export const analyzeSellerPerformance = (
         winningPrice: globalMinPrice,
         winningSeller: winningSellerForSkuAtGlobalMin, 
         priceDifference: sellerPriceForSku - globalMinPrice,
+        marketplace: sellerProductForSku.marketplace,
       });
     }
   });
@@ -443,7 +446,6 @@ export const generateUniqueProductSummaries = (products: Product[]): UniqueProdu
     });
   }
 
-  // Sort by sellerCount (descending), then by SKU (ascending) as a tie-breaker
   return summaries.sort((a,b) => b.sellerCount - a.sellerCount || a.sku.localeCompare(b.sku));
 };
 
