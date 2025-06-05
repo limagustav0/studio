@@ -7,19 +7,18 @@ import { fetchData, getUniqueSellers, calculateBuyboxWins, analyzeSellerPerforma
 import { AppHeader } from '@/components/AppHeader';
 import { BuyboxWinnersDisplay } from '@/components/BuyboxWinnersDisplay';
 import { SellerPerformanceDashboard } from '@/components/SellerPerformanceDashboard';
-import { ProductList } from '@/components/ProductList';
 import { ProductSummaryTable } from '@/components/ProductSummaryTable';
 import { SearchBar } from '@/components/SearchBar';
-import { SkuImportTab } from '@/components/SkuImportTab'; // Import the new component
+import { SkuImportTab } from '@/components/SkuImportTab';
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/hooks/use-toast";
-import { useDebounce } from "@/hooks/use-debounce"; // Import useDebounce
+import { useDebounce } from "@/hooks/use-debounce";
 import { Card, CardHeader, CardContent, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Filter, List, BarChartBig, Search, Package, LayoutGrid, ChevronDown, Users, UploadCloud } from 'lucide-react';
+import { Filter, BarChartBig, Search, Package, LayoutGrid, ChevronDown, Users, UploadCloud } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -48,11 +47,6 @@ export default function HomePage() {
   const [analysis_selectedSellers, setAnalysis_selectedSellers] = useState<string[]>([]);
   const [analysis_sellerPerformanceData, setAnalysis_sellerPerformanceData] = useState<SellerAnalysisMetrics[]>([]);
   const [isSellerPerformanceLoading, setIsSellerPerformanceLoading] = useState<boolean>(false);
-
-  // State for "Todos os Produtos" Tab
-  const [allProductsTab_selectedMarketplace, setAllProductsTab_selectedMarketplace] = useState<string | null>(null);
-  const [allProductsTab_searchTerm, setAllProductsTab_searchTerm] = useState<string>('');
-  const debouncedAllProductsTab_SearchTerm = useDebounce(allProductsTab_searchTerm, SEARCH_DEBOUNCE_DELAY);
 
 
   // State for "Visão Geral do Produto" Tab
@@ -228,44 +222,6 @@ export default function HomePage() {
   }, [internalSkusMap]);
 
 
-  // Memoized products for "Todos os Produtos" Tab
-  const allProductsTab_filteredProducts = useMemo(() => {
-    let filtered = allProducts;
-
-    if (allProductsTab_selectedMarketplace && allProductsTab_selectedMarketplace !== ALL_MARKETPLACES_OPTION_VALUE) {
-      filtered = filtered.filter(p => p.marketplace === allProductsTab_selectedMarketplace);
-    }
-
-    if (debouncedAllProductsTab_SearchTerm) {
-      const lowerSearchTerm = debouncedAllProductsTab_SearchTerm.toLowerCase();
-      filtered = filtered.filter(p =>
-        p.descricao.toLowerCase().includes(lowerSearchTerm) ||
-        p.sku.toLowerCase().includes(lowerSearchTerm) ||
-        p.loja.toLowerCase().includes(lowerSearchTerm)
-      );
-    }
-    return filtered;
-  }, [allProducts, allProductsTab_selectedMarketplace, debouncedAllProductsTab_SearchTerm]);
-
-  const handleAllProductsMarketplaceChange = (value: string) => {
-    const newMarketplace = value === ALL_MARKETPLACES_OPTION_VALUE ? null : value;
-    setAllProductsTab_selectedMarketplace(newMarketplace);
-  };
-
-  const productCountMessage = useMemo(() => {
-    const count = allProductsTab_filteredProducts.length;
-    if (allProductsTab_selectedMarketplace && allProductsTab_selectedMarketplace !== ALL_MARKETPLACES_OPTION_VALUE) {
-      return `Exibindo ${count} produto(s) para o marketplace "${allProductsTab_selectedMarketplace}".`;
-    }
-    if(debouncedAllProductsTab_SearchTerm && (!allProductsTab_selectedMarketplace || allProductsTab_selectedMarketplace === ALL_MARKETPLACES_OPTION_VALUE)) {
-         return `Exibindo ${count} produto(s) correspondente(s) à pesquisa em todos os marketplaces.`;
-    }
-     if(debouncedAllProductsTab_SearchTerm && allProductsTab_selectedMarketplace && allProductsTab_selectedMarketplace !== ALL_MARKETPLACES_OPTION_VALUE) {
-         return `Exibindo ${count} produto(s) correspondente(s) à pesquisa para o marketplace "${allProductsTab_selectedMarketplace}".`;
-    }
-    return `Exibindo ${count} produto(s) (todos os marketplaces).`;
-  }, [allProductsTab_filteredProducts, allProductsTab_selectedMarketplace, debouncedAllProductsTab_SearchTerm]);
-
   const handleInternalSkuChange = (productSku: string, newInternalSku: string) => {
     setInternalSkusMap(prevMap => ({
       ...prevMap,
@@ -353,7 +309,7 @@ export default function HomePage() {
       <AppHeader />
       <main className="flex-grow container mx-auto px-4 py-8 space-y-8">
         <Tabs defaultValue="analysis" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-6 bg-card p-1 rounded-lg">
+          <TabsList className="grid w-full grid-cols-3 mb-6 bg-card p-1 rounded-lg">
             <TabsTrigger value="analysis" className="py-3 text-base hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg">
                 <span className="flex items-center gap-2">
                     <BarChartBig className="h-5 w-5" />
@@ -364,12 +320,6 @@ export default function HomePage() {
                 <span className="flex items-center gap-2">
                     <LayoutGrid className="h-5 w-5" />
                     <span>Visão Geral do Produto</span>
-                </span>
-            </TabsTrigger>
-            <TabsTrigger value="all-products" className="py-3 text-base hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg">
-                <span className="flex items-center gap-2">
-                    <Package className="h-5 w-5" />
-                    <span>Todos os Produtos</span>
                 </span>
             </TabsTrigger>
             <TabsTrigger value="sku-import" className="py-3 text-base hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg">
@@ -565,74 +515,6 @@ export default function HomePage() {
 
           </TabsContent>
 
-          <TabsContent value="all-products" className="space-y-6">
-            <Card className="shadow-lg p-2 sm:p-6">
-                <CardHeader className="pb-4 px-2 sm:px-6">
-                    <CardTitle className="flex items-center"><Filter className="mr-2 h-5 w-5 text-primary" />Filtros para Lista de Produtos</CardTitle>
-                    <CardDescription>Filtre a lista de todos os produtos abaixo por marketplace e/ou termo de pesquisa.</CardDescription>
-                </CardHeader>
-                <CardContent className="px-2 sm:px-6 space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <Label htmlFor="allProducts-marketplace-filter" className="text-sm font-medium">Filtrar por Marketplace</Label>
-                        <Select
-                            value={allProductsTab_selectedMarketplace || ALL_MARKETPLACES_OPTION_VALUE}
-                            onValueChange={handleAllProductsMarketplaceChange}
-                        >
-                            <SelectTrigger id="allProducts-marketplace-filter" className="mt-1">
-                            <SelectValue placeholder="Selecione um marketplace..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                            <SelectItem value={ALL_MARKETPLACES_OPTION_VALUE}>Todos os Marketplaces</SelectItem>
-                            {uniqueMarketplaces.map(mp => <SelectItem key={`mp-filter-allProducts-${mp}`} value={mp}>{mp}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                     <div>
-                        <Label htmlFor="allProducts-search" className="text-sm font-medium">Pesquisar Produtos</Label>
-                        <SearchBar
-                            searchTerm={allProductsTab_searchTerm}
-                            onSearchChange={setAllProductsTab_searchTerm}
-                            placeholder="Pesquisar por descrição, SKU ou loja..."
-                            className="mt-1"
-                        />
-                    </div>
-                  </div>
-                </CardContent>
-            </Card>
-
-            <div className="text-sm text-muted-foreground mb-4">
-                {productCountMessage}
-            </div>
-
-            {isLoading && allProducts.length === 0 ? (
-                 <div className="space-y-4">
-                    <Skeleton className="h-10 w-full" />
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                        {[...Array(8)].map((_, i) => (
-                        <Card key={`skel-prod-${i}`}>
-                            <CardHeader>
-                                <Skeleton className="h-36 w-full mb-4" />
-                                <Skeleton className="h-5 w-3/4" />
-                                <Skeleton className="h-4 w-1/2 mt-1" />
-                            </CardHeader>
-                            <CardContent className="space-y-2">
-                                <Skeleton className="h-4 w-full" />
-                                <Skeleton className="h-4 w-full" />
-                                <Skeleton className="h-4 w-2/3" />
-                            </CardContent>
-                            <CardFooter>
-                                <Skeleton className="h-6 w-1/4" />
-                                <Skeleton className="h-6 w-1/3" />
-                            </CardFooter>
-                        </Card>
-                        ))}
-                    </div>
-                </div>
-            ) : (
-                <ProductList products={allProductsTab_filteredProducts} />
-            )}
-          </TabsContent>
           <TabsContent value="sku-import" className="space-y-6">
             <SkuImportTab 
               onImport={handleBulkInternalSkuImport} 
@@ -649,7 +531,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-    
-
-    
