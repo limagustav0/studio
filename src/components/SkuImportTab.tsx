@@ -158,51 +158,54 @@ export function SkuImportTab({ onImport }: SkuImportTabProps) {
   return (
     <Card className="shadow-lg p-2 sm:p-6">
       <CardHeader className="pb-4 px-2 sm:px-6">
-        <CardTitle className="flex items-center">
+        <CardTitle className="flex items-center justify-center sm:justify-start text-center sm:text-left">
           <UploadCloud className="mr-2 h-6 w-6 text-primary" />
           Importar Mapeamento de SKUs Internos
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-center sm:text-left">
           Faça o upload de um arquivo XLSX (.xlsx ou .xls) para associar SKUs principais aos seus SKUs internos.
           O arquivo deve conter as colunas: <strong>{EXPECTED_PRIMARY_SKU_COLUMN}</strong> e <strong>{EXPECTED_INTERNAL_SKU_COLUMN}</strong>.
         </CardDescription>
       </CardHeader>
-      <CardContent className="px-2 sm:px-6 space-y-6">
-        <div className="space-y-2">
-            <Input
-                id="sku-file-input"
-                type="file"
-                accept=".xlsx, .xls"
-                onChange={handleFileChange}
-                className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
-                disabled={isProcessing}
-            />
-            {selectedFile && (
-                <p className="text-sm text-muted-foreground flex items-center">
-                    <FileText className="mr-2 h-4 w-4" /> Arquivo selecionado: {selectedFile.name}
-                </p>
-            )}
-        </div>
-        <Button onClick={handleImport} disabled={!selectedFile || isProcessing} className="w-full sm:w-auto">
-          {isProcessing ? 'Processando...' : 'Importar Arquivo'}
-        </Button>
+      <CardContent className="px-2 sm:px-6 py-6">
+        <div className="mx-auto flex flex-col items-center space-y-6 max-w-lg">
+            <div className="w-full space-y-2">
+                <Input
+                    id="sku-file-input"
+                    type="file"
+                    accept=".xlsx, .xls"
+                    onChange={handleFileChange}
+                    className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
+                    disabled={isProcessing}
+                />
+                {selectedFile && (
+                    <p className="text-sm text-muted-foreground flex items-center justify-center">
+                        <FileText className="mr-2 h-4 w-4" /> Arquivo selecionado: {selectedFile.name}
+                    </p>
+                )}
+            </div>
+            <Button onClick={handleImport} disabled={!selectedFile || isProcessing} className="w-full sm:w-auto">
+            {isProcessing ? 'Processando...' : 'Importar Arquivo'}
+            </Button>
 
-        <Card className="mt-6 bg-muted/50">
-            <CardHeader className="pb-2">
-                <CardTitle className="text-base flex items-center">
-                    <AlertTriangle className="mr-2 h-5 w-5 text-yellow-600" />
-                    Instruções Importantes
-                </CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-muted-foreground space-y-1">
-                <p>1. Certifique-se de que o arquivo é do formato XLSX ou XLS.</p>
-                <p>2. A primeira planilha do arquivo será utilizada.</p>
-                <p>3. Os cabeçalhos da primeira linha devem ser <strong>{EXPECTED_PRIMARY_SKU_COLUMN}</strong> e <strong>{EXPECTED_INTERNAL_SKU_COLUMN}</strong>.</p>
-                <p>4. SKUs principais duplicados no arquivo? O último encontrado prevalecerá.</p>
-                <p>5. A importação mesclará os dados com os SKUs internos já existentes. Se um SKU Principal do arquivo já existir no sistema, seu SKU Interno será atualizado.</p>
-            </CardContent>
-        </Card>
+            <Card className="bg-muted/50 w-full">
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center">
+                        <AlertTriangle className="mr-2 h-5 w-5 text-yellow-600" />
+                        Instruções Importantes
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm text-muted-foreground space-y-1">
+                    <p>1. Certifique-se de que o arquivo é do formato XLSX ou XLS.</p>
+                    <p>2. A primeira planilha do arquivo será utilizada.</p>
+                    <p>3. Os cabeçalhos da primeira linha devem ser <strong>{EXPECTED_PRIMARY_SKU_COLUMN}</strong> e <strong>{EXPECTED_INTERNAL_SKU_COLUMN}</strong>.</p>
+                    <p>4. SKUs principais duplicados no arquivo? O último encontrado prevalecerá.</p>
+                    <p>5. A importação mesclará os dados com os SKUs internos já existentes. Se um SKU Principal do arquivo já existir no sistema, seu SKU Interno será atualizado.</p>
+                </CardContent>
+            </Card>
+        </div>
       </CardContent>
     </Card>
   );
 }
+
