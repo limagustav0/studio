@@ -251,7 +251,6 @@ export const analyzeSellerPerformance = (
   let lastUpdateTime: string | null = null;
 
   if (sellerProducts.length > 0) {
-    // Find the latest data_hora among the seller's products
     sellerProducts.sort((a, b) => {
       try {
         return compareDesc(parseISO(a.data_hora), parseISO(b.data_hora));
@@ -268,7 +267,6 @@ export const analyzeSellerPerformance = (
       }
     }
   }
-
 
   if (sellerProducts.length === 0) {
     return {
@@ -299,12 +297,14 @@ export const analyzeSellerPerformance = (
   const skusListedBySeller = new Set(sellerProducts.map(p => p.sku));
 
   skusListedBySeller.forEach(sku => {
-    const sellerProductForSku = sellerProducts.find(p => p.sku === sku && p.data_hora); // Ensure product has a date
+    const sellerProductForSku = sellerProducts.find(p => p.sku === sku && p.data_hora);
     if (!sellerProductForSku) return; 
 
     const allListingsForThisSku = productsBySkuGlobal[sku] || [];
     
     if (allListingsForThisSku.length === 0) { 
+      // This case should ideally not happen if sellerProductForSku exists and is part of allProducts
+      // However, if it does, it means the seller is the only one for this SKU (or data is inconsistent)
       buyboxesWon++;
       productsWinningBuybox.push({
         sku: sellerProductForSku.sku,
@@ -315,6 +315,7 @@ export const analyzeSellerPerformance = (
         winningPrice: sellerProductForSku.preco_final,
         winningSeller: selectedSellerName,
         priceDifferenceToNext: null, 
+        nextCompetitorSellerName: null,
         marketplace: sellerProductForSku.marketplace,
       });
       return; 
@@ -328,6 +329,7 @@ export const analyzeSellerPerformance = (
         globalMinPrice = p.preco_final;
         winningSellerForSkuAtGlobalMin = p.loja;
       } else if (p.preco_final === globalMinPrice) {
+        // Prioritize the selected seller if tied for the win
         if (winningSellerForSkuAtGlobalMin !== selectedSellerName && p.loja === selectedSellerName) {
            winningSellerForSkuAtGlobalMin = selectedSellerName; 
         } else if (!winningSellerForSkuAtGlobalMin) { 
@@ -340,18 +342,24 @@ export const analyzeSellerPerformance = (
 
     if (sellerPriceForSku <= globalMinPrice) { 
       buyboxesWon++;
-      let minPriceAmongCompetitors: number | null = null;
-      allListingsForThisSku.forEach(p => {
-        if (p.loja !== selectedSellerName) { 
-          if (minPriceAmongCompetitors === null || p.preco_final < minPriceAmongCompetitors) {
-            minPriceAmongCompetitors = p.preco_final;
-          }
-        }
-      });
+      let nextCompetitorPrice: number | null = null;
+      let nextCompetitorName: string | null = null;
 
+      allListingsForThisSku
+        .filter(p => p.loja !== selectedSellerName) // Only competitors
+        .forEach(competitor => {
+          if (nextCompetitorPrice === null || competitor.preco_final < nextCompetitorPrice) {
+            nextCompetitorPrice = competitor.preco_final;
+            nextCompetitorName = competitor.loja;
+          } else if (competitor.preco_final === nextCompetitorPrice) {
+            // If multiple competitors at the same next price, just take the last one encountered for simplicity
+            nextCompetitorName = competitor.loja; 
+          }
+        });
+      
       let priceDifferenceToNext: number | null = null;
-      if (minPriceAmongCompetitors !== null) {
-        priceDifferenceToNext = minPriceAmongCompetitors - sellerPriceForSku;
+      if (nextCompetitorPrice !== null) {
+        priceDifferenceToNext = nextCompetitorPrice - sellerPriceForSku;
       }
 
       productsWinningBuybox.push({
@@ -363,6 +371,7 @@ export const analyzeSellerPerformance = (
         winningPrice: sellerPriceForSku, 
         winningSeller: selectedSellerName, 
         priceDifferenceToNext: priceDifferenceToNext,
+        nextCompetitorSellerName: (priceDifferenceToNext !== null && priceDifferenceToNext >=0) ? nextCompetitorName : null,
         marketplace: sellerProductForSku.marketplace,
       });
     } else { 
@@ -448,4 +457,3 @@ export const generateUniqueProductSummaries = (products: Product[]): UniqueProdu
 
   return summaries.sort((a,b) => b.sellerCount - a.sellerCount || a.sku.localeCompare(b.sku));
 };
-

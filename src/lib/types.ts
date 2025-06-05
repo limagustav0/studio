@@ -49,7 +49,7 @@ export interface ProductLosingBuyboxInfo {
   winningPrice: number;
   winningSeller: string;
   priceDifference: number;
-  marketplace: string; // Added marketplace
+  marketplace: string;
 }
 
 export interface ProductWinningBuyboxInfo {
@@ -58,10 +58,11 @@ export interface ProductWinningBuyboxInfo {
   imagem: string;
   data_hora: string;
   sellerPrice: number;
-  winningPrice: number;
-  winningSeller: string;
+  winningPrice: number; // This will be same as sellerPrice if they are winning
+  winningSeller: string; // This will be the sellerName from SellerAnalysisMetrics
   priceDifferenceToNext?: number | null;
-  marketplace: string; // Added marketplace here as well for consistency, even if not explicitly requested for this table yet
+  nextCompetitorSellerName?: string | null; // Name of the seller with the next closest price
+  marketplace: string;
 }
 
 export interface SellerAnalysisMetrics {
@@ -84,4 +85,3 @@ export interface UniqueProductSummary {
   minPrice: number;
   maxPrice: number;
 }
-

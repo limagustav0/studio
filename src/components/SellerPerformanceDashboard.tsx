@@ -331,12 +331,12 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
                         <TableCell className="max-w-[120px] truncate" title={item.marketplace}>{item.marketplace}</TableCell>
                         <TableCell className="text-right font-semibold text-green-600">R$ {item.sellerPrice.toFixed(2)}</TableCell>
                         <TableCell className="text-right">
-                            {item.priceDifferenceToNext !== null && item.priceDifferenceToNext !== undefined ? `R$ ${(item.sellerPrice + item.priceDifferenceToNext).toFixed(2)}` : 'N/A'}
+                            {(item.priceDifferenceToNext !== null && item.priceDifferenceToNext !== undefined && item.nextCompetitorSellerName) ? `R$ ${(item.sellerPrice + item.priceDifferenceToNext).toFixed(2)}` : 'N/A'}
                         </TableCell>
-                         <TableCell className="max-w-[120px] truncate">
-                            {item.priceDifferenceToNext !== null && item.priceDifferenceToNext !== undefined ? (
-                                allLosingProducts.find(p => p.sku === item.sku && p.sellerPrice === (item.sellerPrice + (item.priceDifferenceToNext || 0)))?.sellerName || 'Outro'
-                            ): 'N/A'}
+                         <TableCell className="max-w-[120px] truncate" title={item.nextCompetitorSellerName || undefined}>
+                            {item.priceDifferenceToNext !== null && item.priceDifferenceToNext !== undefined 
+                                ? item.nextCompetitorSellerName || 'N/A'
+                                : 'Sem concorrente direto'}
                         </TableCell>
                         <TableCell className="text-right">{formatDifference(item.priceDifferenceToNext)}</TableCell>
                         <TableCell className="text-right text-xs text-muted-foreground">{formatTableCellDateTime(item.data_hora)}</TableCell>
@@ -359,4 +359,3 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
     </Card>
   );
 }
-
