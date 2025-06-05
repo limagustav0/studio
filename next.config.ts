@@ -31,7 +31,13 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'http2.mlstatic.com', // Added this new hostname
+        hostname: 'http2.mlstatic.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'm.media-amazon.com', // Added this new hostname
         port: '',
         pathname: '/**',
       },
