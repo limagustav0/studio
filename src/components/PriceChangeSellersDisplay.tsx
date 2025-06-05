@@ -63,9 +63,10 @@ const chartConfig = {
 const formatDetailedTableDate = (isoDateString: string | null | undefined) => {
   if (!isoDateString) return 'N/A';
   try {
-    return formatDate(parseISO(isoDateString), "dd/MM/yy HH:mm", { locale: ptBR });
+    const parsedDate = parseISO(isoDateString);
+    return formatDate(parsedDate, "dd/MM/yy HH:mm", { locale: ptBR });
   } catch (e) {
-    console.warn("Failed to format detailed table date time:", e);
+    console.warn("Failed to format detailed table date time:", e, "Input:", isoDateString);
     return 'Inválida';
   }
 };
@@ -76,17 +77,18 @@ export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChang
       return { sellerSummaries: [], skuFrequencies: [], topSellersForChart: [], productsChangedBySeller: {} };
     }
 
-    const productsWithChange = allProducts.filter(p => p.change_price === true);
+    const productsWithChange = allProducts.filter(p => p && p.change_price === true && p.loja && p.sku);
 
     const sellerMap: Record<string, { products: Product[], skus: Set<string> }> = {};
     productsWithChange.forEach(p => {
-      if (!p.loja) return;
-      if (!sellerMap[p.loja]) {
-        sellerMap[p.loja] = { products: [], skus: new Set() };
-      }
-      sellerMap[p.loja].products.push(p);
-      if (p.sku) {
-        sellerMap[p.loja].skus.add(p.sku);
+      if (p.loja) {
+        if (!sellerMap[p.loja]) {
+          sellerMap[p.loja] = { products: [], skus: new Set() };
+        }
+        sellerMap[p.loja].products.push(p);
+        if (p.sku) {
+          sellerMap[p.loja].skus.add(p.sku);
+        }
       }
     });
 
@@ -104,34 +106,36 @@ export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChang
 
     const skuMap: Record<string, Product[]> = {};
     productsWithChange.forEach(p => {
-      if (!p.sku) return;
-      if (!skuMap[p.sku]) {
-        skuMap[p.sku] = [];
+      if (p.sku) {
+        if (!skuMap[p.sku]) {
+          skuMap[p.sku] = [];
+        }
+        skuMap[p.sku].push(p);
       }
-      skuMap[p.sku].push(p);
     });
 
     const calculatedSkuFrequencies: SkuChangeFrequency[] = Object.entries(skuMap)
-      .map(([sku, products]) => {
-        const sortedProducts = [...products].sort((a,b) => {
-            try {
-                 if (!a.data_hora || !b.data_hora) return 0;
-                 return compareDesc(parseISO(a.data_hora), parseISO(b.data_hora));
-            } catch { return 0; }
-        });
-        
+      .map(([sku, productsForThisSku]) => {
         let latestProduct: Product | null = null;
-        if (sortedProducts.length > 0) {
-            latestProduct = sortedProducts[0];
-        } else if (products.length > 0) { // Fallback if sorting failed
-            latestProduct = products[0];
+        if (productsForThisSku.length > 0) {
+          const sortedProducts = [...productsForThisSku].sort((a, b) => {
+            try {
+                const dateA = a.data_hora ? parseISO(a.data_hora) : null;
+                const dateB = b.data_hora ? parseISO(b.data_hora) : null;
+                if (dateA && dateB) return compareDesc(dateA, dateB);
+                if (dateA) return -1;
+                if (dateB) return 1;
+                return 0;
+            } catch { return 0; }
+          });
+          latestProduct = sortedProducts[0];
         }
 
         return {
           sku,
           descricao: latestProduct?.descricao || 'N/A',
           imagem: latestProduct?.imagem || '',
-          changeInstanceCount: products.length,
+          changeInstanceCount: productsForThisSku.length,
         };
       })
       .sort((a, b) => b.changeInstanceCount - a.changeInstanceCount || a.sku.localeCompare(b.sku))
@@ -139,38 +143,37 @@ export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChang
 
     const calculatedProductsChangedBySeller: Record<string, Product[]> = {};
     productsWithChange.forEach(p => {
-        if (!p.loja) return;
-        if (!calculatedProductsChangedBySeller[p.loja]) {
-            calculatedProductsChangedBySeller[p.loja] = [];
+        if (p.loja) {
+            if (!calculatedProductsChangedBySeller[p.loja]) {
+                calculatedProductsChangedBySeller[p.loja] = [];
+            }
+            calculatedProductsChangedBySeller[p.loja].push(p);
         }
-        calculatedProductsChangedBySeller[p.loja].push(p);
     });
 
     for (const seller in calculatedProductsChangedBySeller) {
-        calculatedProductsChangedBySeller[seller].sort((a, b) => {
-            try {
-                const dateA = a.data_hora ? parseISO(a.data_hora) : null;
-                const dateB = b.data_hora ? parseISO(b.data_hora) : null;
+        if (calculatedProductsChangedBySeller[seller]) {
+            calculatedProductsChangedBySeller[seller].sort((a, b) => {
+                try {
+                    const dateA = a.data_hora ? parseISO(a.data_hora) : null;
+                    const dateB = b.data_hora ? parseISO(b.data_hora) : null;
 
-                if (dateA && dateB) {
-                    return compareDesc(dateA, dateB);
-                } else if (dateA) {
-                    return -1; 
-                } else if (dateB) {
-                    return 1;  
+                    if (dateA && dateB) return compareDesc(dateA, dateB);
+                    if (dateA) return -1;
+                    if (dateB) return 1;
+                    return (a.descricao || '').localeCompare(b.descricao || '');
+                } catch {
+                    return (a.descricao || '').localeCompare(b.descricao || '');
                 }
-                return (a.descricao || '').localeCompare(b.descricao || '');
-            } catch {
-                return (a.descricao || '').localeCompare(b.descricao || '');
-            }
-        });
+            });
+        }
     }
 
-    return { 
-        sellerSummaries: calculatedSellerSummaries, 
-        skuFrequencies: calculatedSkuFrequencies, 
-        topSellersForChart: calculatedTopSellersForChart, 
-        productsChangedBySeller: calculatedProductsChangedBySeller 
+    return {
+        sellerSummaries: calculatedSellerSummaries,
+        skuFrequencies: calculatedSkuFrequencies,
+        topSellersForChart: calculatedTopSellersForChart,
+        productsChangedBySeller: calculatedProductsChangedBySeller
     };
   }, [allProducts]);
 
@@ -263,7 +266,7 @@ export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChang
                   <BarChart
                     layout="vertical"
                     data={topSellersForChart}
-                    margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
+                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                   >
                     <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} />
                     <YAxis
@@ -271,8 +274,8 @@ export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChang
                       type="category"
                       stroke="hsl(var(--muted-foreground))"
                       fontSize={12}
-                      tickFormatter={(value) => typeof value === 'string' && value.length > 20 ? `${value.substring(0, 20)}...` : value}
-                      width={150}
+                      tickFormatter={(value) => typeof value === 'string' && value.length > 25 ? `${value.substring(0, 22)}...` : value}
+                      width={180}
                       interval={0}
                     />
                     <ChartTooltip
@@ -361,7 +364,7 @@ export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChang
                     {sellerSummaries.map((seller) => {
                         const changedProductsForThisSeller = productsChangedBySeller[seller.sellerName] || [];
                         return (
-                            <AccordionItem value={seller.sellerName} key={seller.sellerName}>
+                            <AccordionItem value={seller.sellerName} key={`accordion-seller-${seller.sellerName}`}>
                                 <AccordionTrigger className="hover:no-underline">
                                     <div className="flex justify-between items-center w-full pr-2">
                                         <span className="font-medium text-left truncate" title={seller.sellerName}>
@@ -387,7 +390,7 @@ export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChang
                                                 </TableHeader>
                                                 <TableBody>
                                                     {changedProductsForThisSeller.map((product, index) => (
-                                                        <TableRow key={`${product.id}-${index}`}>
+                                                        <TableRow key={`${product.id || product.sku}-${index}-${product.data_hora || Date.now()}`}>
                                                             <TableCell className="hidden sm:table-cell">
                                                                 <Image
                                                                     src={product.imagem || "https://placehold.co/50x50.png"}
