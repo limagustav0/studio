@@ -78,7 +78,7 @@ export default function HomePage() {
   // Save internal SKUs to localStorage whenever they change
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      if (Object.keys(internalSkusMap).length > 0) {
+      if (Object.keys(internalSkusMap).length > 0 || localStorage.getItem(INTERNAL_SKUS_LOCAL_STORAGE_KEY)) {
         localStorage.setItem(INTERNAL_SKUS_LOCAL_STORAGE_KEY, JSON.stringify(internalSkusMap));
       }
     }
@@ -143,9 +143,11 @@ export default function HomePage() {
       if (matchingPrincipalSkus.length > 0) {
         filtered = filtered.filter(p => matchingPrincipalSkus.includes(p.sku));
       } else {
-         // If selected internal SKUs map to no principal SKUs, or the map is empty,
-        // no products will match this SKU filter.
-        filtered = [];
+         // If selected internal SKUs map to no principal SKUs, or the map is empty and filter is applied
+         // no products will match this SKU filter if a filter is indeed active.
+        if (analysis_selectedInternalSkus.length > 0) { // ensure filter is active
+          filtered = [];
+        }
       }
     }
     return filtered;
@@ -632,7 +634,11 @@ export default function HomePage() {
             )}
           </TabsContent>
           <TabsContent value="sku-import" className="space-y-6">
-            <SkuImportTab onImport={handleBulkInternalSkuImport} />
+            <SkuImportTab 
+              onImport={handleBulkInternalSkuImport} 
+              allProducts={allProducts}
+              internalSkusMap={internalSkusMap}
+            />
           </TabsContent>
         </Tabs>
       </main>

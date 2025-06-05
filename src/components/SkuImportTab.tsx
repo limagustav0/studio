@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, type ChangeEvent } from 'react';
@@ -7,9 +8,12 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { UploadCloud, FileText, AlertTriangle, FileSpreadsheet } from 'lucide-react';
+import type { Product } from '@/lib/types';
 
 interface SkuImportTabProps {
   onImport: (importedSkus: Record<string, string>) => void;
+  allProducts: Product[];
+  internalSkusMap: Record<string, string>;
 }
 
 // Define the expected column names from the XLSX file
@@ -17,7 +21,7 @@ const EXPECTED_PRIMARY_SKU_COLUMN = "SKU_Principal";
 const EXPECTED_INTERNAL_SKU_COLUMN_UNDERSCORE = "SKU_Interno";
 const EXPECTED_INTERNAL_SKU_COLUMN_SPACE = "SKU Interno";
 
-export function SkuImportTab({ onImport }: SkuImportTabProps) {
+export function SkuImportTab({ onImport, allProducts, internalSkusMap }: SkuImportTabProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
@@ -44,19 +48,33 @@ export function SkuImportTab({ onImport }: SkuImportTabProps) {
   };
 
   const handleDownloadTemplate = () => {
-    const sampleData = [
-      { [EXPECTED_PRIMARY_SKU_COLUMN]: "EXEMPLO_SKU_LOJA_1", [EXPECTED_INTERNAL_SKU_COLUMN_UNDERSCORE]: "MEU_SKU_INTERNO_123" },
-      { [EXPECTED_PRIMARY_SKU_COLUMN]: "EXEMPLO_SKU_LOJA_2", [EXPECTED_INTERNAL_SKU_COLUMN_UNDERSCORE]: "MEU_SKU_INTERNO_456" },
-      { [EXPECTED_PRIMARY_SKU_COLUMN]: "OUTRO_SKU_DA_LOJA", [EXPECTED_INTERNAL_SKU_COLUMN_UNDERSCORE]: "MEU_SKU_XYZ" },
-    ];
-    const worksheet = XLSX.utils.json_to_sheet(sampleData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "SKUs"); // "SKUs" is the sheet name
+    const uniquePrincipalSkus = Array.from(new Set(allProducts.map(p => p.sku).filter(Boolean)));
+    const skusToPreFill = uniquePrincipalSkus.filter(
+      (sku) => !internalSkusMap[sku] 
+    );
+
+    let dataForSheet: Array<Record<string, string>>;
+
+    if (skusToPreFill.length > 0) {
+      dataForSheet = skusToPreFill.map(sku => ({
+        [EXPECTED_PRIMARY_SKU_COLUMN]: sku,
+        [EXPECTED_INTERNAL_SKU_COLUMN_UNDERSCORE]: "", // Leave internal SKU blank
+      }));
+    } else {
+      dataForSheet = [
+        { [EXPECTED_PRIMARY_SKU_COLUMN]: "EXEMPLO_SKU_LOJA_1", [EXPECTED_INTERNAL_SKU_COLUMN_UNDERSCORE]: "MEU_SKU_INTERNO_123" },
+        { [EXPECTED_PRIMARY_SKU_COLUMN]: "EXEMPLO_SKU_LOJA_2", [EXPECTED_INTERNAL_SKU_COLUMN_UNDERSCORE]: "MEU_SKU_INTERNO_456" },
+        { [EXPECTED_PRIMARY_SKU_COLUMN]: "OUTRO_SKU_DA_LOJA", [EXPECTED_INTERNAL_SKU_COLUMN_UNDERSCORE]: "MEU_SKU_XYZ" },
+      ];
+    }
     
-    // Attempt to set column widths (optional, might not work perfectly in all Excel versions)
+    const worksheet = XLSX.utils.json_to_sheet(dataForSheet);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "SKUs"); 
+    
     const wscols = [
-        { wch: (EXPECTED_PRIMARY_SKU_COLUMN.length > 25 ? EXPECTED_PRIMARY_SKU_COLUMN.length : 25) + 5 }, // SKU_Principal
-        { wch: (EXPECTED_INTERNAL_SKU_COLUMN_UNDERSCORE.length > 25 ? EXPECTED_INTERNAL_SKU_COLUMN_UNDERSCORE.length : 25) + 5 }  // SKU_Interno
+        { wch: (EXPECTED_PRIMARY_SKU_COLUMN.length > 25 ? EXPECTED_PRIMARY_SKU_COLUMN.length : 25) + 5 }, 
+        { wch: (EXPECTED_INTERNAL_SKU_COLUMN_UNDERSCORE.length > 25 ? EXPECTED_INTERNAL_SKU_COLUMN_UNDERSCORE.length : 25) + 5 }
     ];
     worksheet['!cols'] = wscols;
 
@@ -153,7 +171,6 @@ export function SkuImportTab({ onImport }: SkuImportTabProps) {
 
         if (importedCount > 0) {
           onImport(importedSkus);
-          // The success toast is now handled in the main page component after onImport
         } else {
            toast({
             variant: "destructive",
@@ -253,7 +270,7 @@ export function SkuImportTab({ onImport }: SkuImportTabProps) {
                     <p>3. Os cabeçalhos da primeira linha devem ser <strong>{EXPECTED_PRIMARY_SKU_COLUMN}</strong> e (<strong>{EXPECTED_INTERNAL_SKU_COLUMN_UNDERSCORE}</strong> ou <strong>{EXPECTED_INTERNAL_SKU_COLUMN_SPACE}</strong>). Verifique se não há espaços extras.</p>
                     <p>4. SKUs principais duplicados no arquivo? O último encontrado prevalecerá.</p>
                     <p>5. A importação mesclará os dados com os SKUs internos já existentes. Se um SKU Principal do arquivo já existir no sistema, seu SKU Interno será atualizado.</p>
-                     <p>6. Clique em "Baixar Modelo" para obter um arquivo com os cabeçalhos e formato corretos.</p>
+                     <p>6. Clique em "Baixar Modelo" para obter um arquivo com os cabeçalhos e formato corretos (ele será pré-preenchido com SKUs que ainda não possuem um SKU Interno definido por você).</p>
                 </CardContent>
             </Card>
         </div>
@@ -261,3 +278,4 @@ export function SkuImportTab({ onImport }: SkuImportTabProps) {
     </Card>
   );
 }
+
