@@ -6,7 +6,7 @@ import type { Product } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Users, Package, TrendingUp, BarChartHorizontalBig, ListTodo, ChevronDown } from 'lucide-react';
+import { Package, TrendingUp, BarChartHorizontalBig, ListTodo } from 'lucide-react';
 import Image from 'next/image';
 import { parseISO, compareDesc, format as formatDate } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -78,7 +78,6 @@ export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChang
 
     const productsWithChange = allProducts.filter(p => p.change_price === true);
 
-    // Calculate seller summaries
     const sellerMap: Record<string, { products: Product[], skus: Set<string> }> = {};
     productsWithChange.forEach(p => {
       if (!p.loja) return;
@@ -86,7 +85,9 @@ export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChang
         sellerMap[p.loja] = { products: [], skus: new Set() };
       }
       sellerMap[p.loja].products.push(p);
-      sellerMap[p.loja].skus.add(p.sku);
+      if (p.sku) {
+        sellerMap[p.loja].skus.add(p.sku);
+      }
     });
 
     const calculatedSellerSummaries: SellerPriceChangeSummary[] = Object.entries(sellerMap)
@@ -96,13 +97,11 @@ export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChang
         distinctSkusChanged: data.skus.size,
       }))
       .sort((a, b) => b.totalChangeInstances - a.totalChangeInstances || a.sellerName.localeCompare(b.sellerName));
-    
-    const calculatedTopSellersForChart = [...calculatedSellerSummaries] 
+
+    const calculatedTopSellersForChart = [...calculatedSellerSummaries]
       .slice(0, TOP_N_SELLERS_CHART)
-      .reverse(); 
+      .reverse();
 
-
-    // Calculate SKU frequencies
     const skuMap: Record<string, Product[]> = {};
     productsWithChange.forEach(p => {
       if (!p.sku) return;
@@ -115,9 +114,12 @@ export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChang
     const calculatedSkuFrequencies: SkuChangeFrequency[] = Object.entries(skuMap)
       .map(([sku, products]) => {
         const sortedProducts = [...products].sort((a,b) => {
-            try { return compareDesc(parseISO(a.data_hora), parseISO(b.data_hora))} catch { return 0; }
+            try {
+                 if (!a.data_hora || !b.data_hora) return 0;
+                 return compareDesc(parseISO(a.data_hora), parseISO(b.data_hora));
+            } catch { return 0; }
         });
-        const latestProduct = sortedProducts[0] || products[0];
+        const latestProduct = sortedProducts[0] || products[0] || {descricao: 'N/A', imagem: ''};
         return {
           sku,
           descricao: latestProduct.descricao,
@@ -128,7 +130,6 @@ export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChang
       .sort((a, b) => b.changeInstanceCount - a.changeInstanceCount || a.sku.localeCompare(b.sku))
       .slice(0, TOP_N_SKUS_TABLE);
 
-    // Group products with change_price by seller
     const calculatedProductsChangedBySeller: Record<string, Product[]> = {};
     productsWithChange.forEach(p => {
         if (!p.loja) return;
@@ -141,6 +142,7 @@ export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChang
     for (const seller in calculatedProductsChangedBySeller) {
         calculatedProductsChangedBySeller[seller].sort((a, b) => {
             try {
+                if (!a.data_hora || !b.data_hora) return a.descricao.localeCompare(b.descricao);
                 return compareDesc(parseISO(a.data_hora), parseISO(b.data_hora));
             } catch {
                 return a.descricao.localeCompare(b.descricao);
@@ -148,7 +150,12 @@ export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChang
         });
     }
 
-    return { sellerSummaries: calculatedSellerSummaries, skuFrequencies: calculatedSkuFrequencies, topSellersForChart: calculatedTopSellersForChart, productsChangedBySeller: calculatedProductsChangedBySeller };
+    return { 
+        sellerSummaries: calculatedSellerSummaries, 
+        skuFrequencies: calculatedSkuFrequencies, 
+        topSellersForChart: calculatedTopSellersForChart, 
+        productsChangedBySeller: calculatedProductsChangedBySeller 
+    };
   }, [allProducts]);
 
   if (isLoading) {
@@ -217,7 +224,6 @@ export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChang
     );
   }
 
-
   return (
     <div className="space-y-8">
       <Card className="shadow-lg">
@@ -241,7 +247,7 @@ export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChang
                   <BarChart
                     layout="vertical"
                     data={topSellersForChart}
-                    margin={{ top: 5, right: 30, left: 100, bottom: 5 }} 
+                    margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
                   >
                     <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} />
                     <YAxis
@@ -249,9 +255,9 @@ export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChang
                       type="category"
                       stroke="hsl(var(--muted-foreground))"
                       fontSize={12}
-                      tickFormatter={(value) => value.length > 20 ? `${value.substring(0, 20)}...` : value}
-                      width={150} 
-                      interval={0} 
+                      tickFormatter={(value) => typeof value === 'string' && value.length > 20 ? `${value.substring(0, 20)}...` : value}
+                      width={150}
+                      interval={0}
                     />
                     <Tooltip
                       cursor={{ fill: "hsl(var(--muted))" }}
@@ -300,7 +306,7 @@ export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChang
                       <TableCell className="hidden sm:table-cell">
                         <Image
                           src={skuItem.imagem || "https://placehold.co/50x50.png"}
-                          alt={skuItem.descricao}
+                          alt={skuItem.descricao || 'Imagem do produto'}
                           width={50}
                           height={50}
                           className="rounded"
@@ -369,7 +375,7 @@ export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChang
                                                             <TableCell className="hidden sm:table-cell">
                                                                 <Image
                                                                     src={product.imagem || "https://placehold.co/50x50.png"}
-                                                                    alt={product.descricao}
+                                                                    alt={product.descricao || 'Imagem do produto'}
                                                                     width={50}
                                                                     height={50}
                                                                     className="rounded"
@@ -386,7 +392,7 @@ export function PriceChangeSellersDisplay({ allProducts, isLoading }: PriceChang
                                             </Table>
                                         </div>
                                     ) : (
-                                        <p className="text-sm text-muted-foreground py-2 px-4">Nenhum produto específico encontrado para este vendedor com a flag 'change_price' (pode indicar um erro nos dados ou a flag foi aplicada a um produto que não está mais presente na lista completa atual).</p>
+                                        <p className="text-sm text-muted-foreground py-2 px-4">Nenhum produto específico encontrado para este vendedor com a flag 'change_price'.</p>
                                     )}
                                 </AccordionContent>
                             </AccordionItem>
