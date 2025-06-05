@@ -175,7 +175,7 @@ export function SkuImportTab({ onImport }: SkuImportTabProps) {
                     type="file"
                     accept=".xlsx, .xls"
                     onChange={handleFileChange}
-                    className="text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
+                    className="text-sm file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
                     disabled={isProcessing}
                 />
                 {selectedFile && (
