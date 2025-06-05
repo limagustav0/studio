@@ -280,29 +280,31 @@ export default function HomePage() {
                     <CardDescription>Aplique filtros para refinar os dados exibidos nas seções de Análise de Desempenho e Vencedores de Buybox abaixo.</CardDescription>
                 </CardHeader>
                 <CardContent className="px-2 sm:px-6 space-y-4">
-                    <div>
-                        <Label htmlFor="analysis-marketplace-filter" className="text-sm font-medium">Filtrar por Marketplace</Label>
-                        <Select
-                            value={analysis_selectedMarketplace || ALL_MARKETPLACES_OPTION_VALUE}
-                            onValueChange={handleAnalysisMarketplaceChange}
-                        >
-                            <SelectTrigger id="analysis-marketplace-filter" className="mt-1">
-                            <SelectValue placeholder="Selecione um marketplace..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                            <SelectItem value={ALL_MARKETPLACES_OPTION_VALUE}>Todos os Marketplaces</SelectItem>
-                            {uniqueMarketplaces.map(mp => <SelectItem key={`mp-filter-analysis-${mp}`} value={mp}>{mp}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div>
-                        <Label htmlFor="analysis-product-search" className="text-sm font-medium">Pesquisar por Nome do Produto</Label>
-                        <SearchBar
-                            searchTerm={analysis_productSearchTerm}
-                            onSearchChange={setAnalysis_productSearchTerm}
-                            placeholder="Digite o nome do produto..."
-                            // Consider adding a unique id if SearchBar needs it for aria attributes
-                        />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <Label htmlFor="analysis-marketplace-filter" className="text-sm font-medium">Filtrar por Marketplace</Label>
+                            <Select
+                                value={analysis_selectedMarketplace || ALL_MARKETPLACES_OPTION_VALUE}
+                                onValueChange={handleAnalysisMarketplaceChange}
+                            >
+                                <SelectTrigger id="analysis-marketplace-filter" className="mt-1">
+                                <SelectValue placeholder="Selecione um marketplace..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                <SelectItem value={ALL_MARKETPLACES_OPTION_VALUE}>Todos os Marketplaces</SelectItem>
+                                {uniqueMarketplaces.map(mp => <SelectItem key={`mp-filter-analysis-${mp}`} value={mp}>{mp}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <Label htmlFor="analysis-product-search" className="text-sm font-medium">Pesquisar por Nome do Produto</Label>
+                            <SearchBar
+                                searchTerm={analysis_productSearchTerm}
+                                onSearchChange={setAnalysis_productSearchTerm}
+                                placeholder="Digite o nome do produto..."
+                                // Consider adding a unique id if SearchBar needs it for aria attributes
+                            />
+                        </div>
                     </div>
                 </CardContent>
             </Card>
@@ -475,7 +477,7 @@ export default function HomePage() {
                                 <Skeleton className="h-4 w-full" />
                                 <Skeleton className="h-4 w-2/3" />
                             </CardContent>
-                            <CardFooter className="flex justify-between">
+                            <CardFooter>
                                 <Skeleton className="h-6 w-1/4" />
                                 <Skeleton className="h-6 w-1/3" />
                             </CardFooter>
