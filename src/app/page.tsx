@@ -10,7 +10,7 @@ import { SellerPerformanceDashboard } from '@/components/SellerPerformanceDashbo
 import { ProductSummaryTable } from '@/components/ProductSummaryTable';
 import { SearchBar } from '@/components/SearchBar';
 import { SkuImportTab } from '@/components/SkuImportTab';
-import { PriceChangeSellersDisplay } from '@/components/PriceChangeSellersDisplay'; // Novo componente
+import { PriceChangeSellersDisplay } from '@/components/PriceChangeSellersDisplay';
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/hooks/use-toast";
 import { useDebounce } from "@/hooks/use-debounce";
@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Filter, BarChartBig, Search, Package, LayoutGrid, ChevronDown, Users, UploadCloud, Repeat } from 'lucide-react'; // Adicionado Repeat
+import { Filter, BarChartBig, Search, Package, LayoutGrid, ChevronDown, Users, UploadCloud, Repeat } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -55,6 +55,11 @@ export default function HomePage() {
   const [overviewTab_selectedMarketplace, setOverviewTab_selectedMarketplace] = useState<string | null>(null);
   const [overviewTab_searchTerm, setOverviewTab_searchTerm] = useState<string>('');
   const debouncedOverviewTab_SearchTerm = useDebounce(overviewTab_searchTerm, SEARCH_DEBOUNCE_DELAY);
+
+  // State for "Vendedores c/ Mudanças" Tab filters
+  const [priceChangeTab_selectedMarketplace, setPriceChangeTab_selectedMarketplace] = useState<string | null>(null);
+  const [priceChangeTab_selectedInternalSkus, setPriceChangeTab_selectedInternalSkus] = useState<string[]>([]);
+
 
   // Load internal SKUs from localStorage on initial mount
   useEffect(() => {
@@ -138,9 +143,7 @@ export default function HomePage() {
       if (matchingPrincipalSkus.length > 0) {
         filtered = filtered.filter(p => matchingPrincipalSkus.includes(p.sku));
       } else {
-         // If selected internal SKUs map to no principal SKUs, or the map is empty and filter is applied
-         // no products will match this SKU filter if a filter is indeed active.
-        if (analysis_selectedInternalSkus.length > 0) { // ensure filter is active
+        if (analysis_selectedInternalSkus.length > 0) { 
           filtered = [];
         }
       }
@@ -307,6 +310,46 @@ export default function HomePage() {
   // Memoized Sets for faster "checked" prop calculation in dropdowns
   const analysis_selectedSellersSet = useMemo(() => new Set(analysis_selectedSellers), [analysis_selectedSellers]);
   const analysis_selectedInternalSkusSet = useMemo(() => new Set(analysis_selectedInternalSkus), [analysis_selectedInternalSkus]);
+
+  // "Vendedores c/ Mudanças" Tab Filter Handlers & Memoized Data
+  const handlePriceChangeTabMarketplaceChange = (value: string) => {
+    const newMarketplace = value === ALL_MARKETPLACES_OPTION_VALUE ? null : value;
+    setPriceChangeTab_selectedMarketplace(newMarketplace);
+  };
+
+  const getPriceChangeTabSelectedInternalSkusText = () => {
+    if (priceChangeTab_selectedInternalSkus.length === 0) {
+      return "Selecione SKU(s) Interno(s)...";
+    }
+    if (priceChangeTab_selectedInternalSkus.length <= 2) {
+      return priceChangeTab_selectedInternalSkus.join(', ');
+    }
+    return `${priceChangeTab_selectedInternalSkus.slice(0, 2).join(', ')} + ${priceChangeTab_selectedInternalSkus.length - 2} mais`;
+  };
+  const priceChangeTab_selectedInternalSkusSet = useMemo(() => new Set(priceChangeTab_selectedInternalSkus), [priceChangeTab_selectedInternalSkus]);
+
+  const priceChangeTab_filteredProducts = useMemo(() => {
+    let filtered = allProducts;
+
+    if (priceChangeTab_selectedMarketplace && priceChangeTab_selectedMarketplace !== ALL_MARKETPLACES_OPTION_VALUE) {
+        filtered = filtered.filter(p => p.marketplace === priceChangeTab_selectedMarketplace);
+    }
+
+    if (priceChangeTab_selectedInternalSkus.length > 0) {
+        const matchingPrincipalSkus = Object.entries(internalSkusMap)
+            .filter(([_, internalSkuVal]) => priceChangeTab_selectedInternalSkus.includes(internalSkuVal))
+            .map(([principalSku, _]) => principalSku);
+
+        if (matchingPrincipalSkus.length > 0) {
+            filtered = filtered.filter(p => matchingPrincipalSkus.includes(p.sku));
+        } else {
+            if (priceChangeTab_selectedInternalSkus.length > 0) {
+                filtered = [];
+            }
+        }
+    }
+    return filtered;
+  }, [allProducts, priceChangeTab_selectedMarketplace, priceChangeTab_selectedInternalSkus, internalSkusMap]);
 
 
   return (
@@ -527,15 +570,76 @@ export default function HomePage() {
           </TabsContent>
 
           <TabsContent value="price-change-sellers" className="space-y-6">
-            <PriceChangeSellersDisplay 
-              allProducts={allProducts}
+            <Card className="shadow-lg p-2 sm:p-6">
+                <CardHeader className="pb-4 px-2 sm:px-6">
+                    <CardTitle className="flex items-center"><Filter className="mr-2 h-5 w-5 text-primary" />Filtros para Vendedores com Mudanças</CardTitle>
+                    <CardDescription>Refine a lista de vendedores e produtos com alterações de preço.</CardDescription>
+                </CardHeader>
+                <CardContent className="px-2 sm:px-6 space-y-4">
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <Label htmlFor="pricechange-marketplace-filter" className="text-sm font-medium">Filtrar por Marketplace</Label>
+                        <Select
+                            value={priceChangeTab_selectedMarketplace || ALL_MARKETPLACES_OPTION_VALUE}
+                            onValueChange={handlePriceChangeTabMarketplaceChange}
+                        >
+                            <SelectTrigger id="pricechange-marketplace-filter" className="mt-1">
+                            <SelectValue placeholder="Selecione um marketplace..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                            <SelectItem value={ALL_MARKETPLACES_OPTION_VALUE}>Todos os Marketplaces</SelectItem>
+                            {uniqueMarketplaces.map(mp => <SelectItem key={`mp-filter-pricechange-${mp}`} value={mp}>{mp}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div>
+                        <Label htmlFor="pricechange-internal-sku-filter" className="text-sm font-medium">Filtrar por SKU(s) Interno(s)</Label>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" className="w-full justify-between mt-1">
+                                <span className="truncate pr-2">{getPriceChangeTabSelectedInternalSkusText()}</span>
+                                <ChevronDown className="h-4 w-4 opacity-50" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
+                                <DropdownMenuLabel>SKUs Internos Disponíveis</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                 {uniqueInternalSkuValues.length === 0 && (
+                                    <p className="px-2 py-1.5 text-sm text-muted-foreground">Nenhum SKU interno mapeado.</p>
+                                 )}
+                                <ScrollArea className="h-[200px]">
+                                {uniqueInternalSkuValues.map((sku) => (
+                                <DropdownMenuCheckboxItem
+                                    key={`internal-sku-filter-pricechange-${sku}`}
+                                    checked={priceChangeTab_selectedInternalSkusSet.has(sku)}
+                                    onCheckedChange={(checked) => {
+                                    setPriceChangeTab_selectedInternalSkus((prev) =>
+                                        checked
+                                        ? [...prev, sku]
+                                        : prev.filter((s) => s !== sku)
+                                    );
+                                    }}
+                                    onSelect={(e) => e.preventDefault()}
+                                >
+                                    {sku}
+                                </DropdownMenuCheckboxItem>
+                                ))}
+                                </ScrollArea>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                   </div>
+                </CardContent>
+            </Card>
+            <PriceChangeSellersDisplay
+              allProducts={priceChangeTab_filteredProducts}
               isLoading={isLoading && allProducts.length === 0}
             />
           </TabsContent>
 
           <TabsContent value="sku-import" className="space-y-6">
-            <SkuImportTab 
-              onImport={handleBulkInternalSkuImport} 
+            <SkuImportTab
+              onImport={handleBulkInternalSkuImport}
               allProducts={allProducts}
               internalSkusMap={internalSkusMap}
             />
@@ -549,6 +653,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-
-    
