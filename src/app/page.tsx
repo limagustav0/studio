@@ -27,6 +27,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 
 const ALL_MARKETPLACES_OPTION_VALUE = "--all-marketplaces--";
+const ALL_INTERNAL_SKUS_OPTION_VALUE = "--all-internal-skus--";
 const DEFAULT_SELLER_FOCUS = "HAIRPRO";
 const INTERNAL_SKUS_LOCAL_STORAGE_KEY = 'priceWiseInternalSkusMap';
 const SEARCH_DEBOUNCE_DELAY = 500; // milliseconds
@@ -42,8 +43,7 @@ export default function HomePage() {
 
   // State for "Análise Detalhada" Tab
   const [analysis_selectedMarketplace, setAnalysis_selectedMarketplace] = useState<string | null>(null);
-  const [analysis_skuSearchTerm, setAnalysis_skuSearchTerm] = useState<string>('');
-  const debouncedAnalysis_skuSearchTerm = useDebounce(analysis_skuSearchTerm, SEARCH_DEBOUNCE_DELAY);
+  const [analysis_selectedInternalSku, setAnalysis_selectedInternalSku] = useState<string | null>(null);
   const [uniqueSellersForAnalysis, setUniqueSellersForAnalysis] = useState<string[]>([]);
   const [buyboxWinners, setBuyboxWinners] = useState<BuyboxWinner[]>([]);
   const [analysis_selectedSellers, setAnalysis_selectedSellers] = useState<string[]>([]);
@@ -136,12 +136,21 @@ export default function HomePage() {
     if (analysis_selectedMarketplace && analysis_selectedMarketplace !== ALL_MARKETPLACES_OPTION_VALUE) {
       filtered = filtered.filter(p => p.marketplace === analysis_selectedMarketplace);
     }
-    if (debouncedAnalysis_skuSearchTerm) {
-      const lowerSearchTerm = debouncedAnalysis_skuSearchTerm.toLowerCase();
-      filtered = filtered.filter(p => p.sku.toLowerCase().includes(lowerSearchTerm));
+    if (analysis_selectedInternalSku && analysis_selectedInternalSku !== ALL_INTERNAL_SKUS_OPTION_VALUE) {
+      const matchingPrincipalSkus = Object.entries(internalSkusMap)
+        .filter(([_, internalSkuVal]) => internalSkuVal === analysis_selectedInternalSku)
+        .map(([principalSku, _]) => principalSku);
+      
+      if (matchingPrincipalSkus.length > 0) {
+        filtered = filtered.filter(p => matchingPrincipalSkus.includes(p.sku));
+      } else {
+        // If an internal SKU is selected but it maps to no principal SKUs,
+        // or the map is empty, no products will match this SKU filter.
+        filtered = [];
+      }
     }
     return filtered;
-  }, [allProducts, analysis_selectedMarketplace, debouncedAnalysis_skuSearchTerm]);
+  }, [allProducts, analysis_selectedMarketplace, analysis_selectedInternalSku, internalSkusMap]);
 
   // Effects for "Análise Detalhada" Tab - Seller list and default selection
   useEffect(() => {
@@ -211,6 +220,17 @@ export default function HomePage() {
     const newMarketplace = value === ALL_MARKETPLACES_OPTION_VALUE ? null : value;
     setAnalysis_selectedMarketplace(newMarketplace);
   };
+
+  const handleAnalysisInternalSkuChange = (value: string) => {
+    const newInternalSku = value === ALL_INTERNAL_SKUS_OPTION_VALUE ? null : value;
+    setAnalysis_selectedInternalSku(newInternalSku);
+  };
+
+  const uniqueInternalSkuValues = useMemo(() => {
+    if (!internalSkusMap) return [];
+    return Array.from(new Set(Object.values(internalSkusMap).filter(Boolean))).sort();
+  }, [internalSkusMap]);
+
 
   // Memoized products for "Todos os Produtos" Tab
   const allProductsTab_filteredProducts = useMemo(() => {
@@ -378,13 +398,19 @@ export default function HomePage() {
                         </Select>
                     </div>
                     <div>
-                        <Label htmlFor="analysis-sku-search" className="text-sm font-medium">Pesquisar por SKU</Label>
-                        <SearchBar
-                            searchTerm={analysis_skuSearchTerm}
-                            onSearchChange={setAnalysis_skuSearchTerm}
-                            placeholder="Digite o SKU..."
-                            className="mt-1"
-                        />
+                        <Label htmlFor="analysis-internal-sku-filter" className="text-sm font-medium">Filtrar por SKU Interno</Label>
+                        <Select
+                            value={analysis_selectedInternalSku || ALL_INTERNAL_SKUS_OPTION_VALUE}
+                            onValueChange={handleAnalysisInternalSkuChange}
+                        >
+                            <SelectTrigger id="analysis-internal-sku-filter" className="mt-1">
+                            <SelectValue placeholder="Selecione um SKU interno..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                            <SelectItem value={ALL_INTERNAL_SKUS_OPTION_VALUE}>Todos os SKUs Internos</SelectItem>
+                            {uniqueInternalSkuValues.map(sku => <SelectItem key={`internal-sku-filter-${sku}`} value={sku}>{sku}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
                     </div>
                    </div>
                 </CardContent>
@@ -394,7 +420,7 @@ export default function HomePage() {
                 <Card className="shadow-lg p-2 sm:p-6">
                     <CardHeader className="pb-4 px-2 sm:px-6">
                         <CardTitle className="flex items-center"><Users className="mr-2 h-5 w-5 text-primary" /> Análise de Desempenho por Vendedor</CardTitle>
-                        <CardDescription>Selecione um ou mais vendedores para ver suas métricas consolidadas, considerando o filtro de marketplace e SKU acima.</CardDescription>
+                        <CardDescription>Selecione um ou mais vendedores para ver suas métricas consolidadas, considerando o filtro de marketplace e SKU interno acima.</CardDescription>
                     </CardHeader>
                     <CardContent className="px-2 sm:px-6">
                         <Label className="text-sm font-medium mb-1 block">Selecionar Vendedor(es) para Análise</Label>
@@ -452,8 +478,8 @@ export default function HomePage() {
             <section aria-labelledby="buybox-analysis-title">
               <h2 id="buybox-analysis-title" className="sr-only">Análise de Buybox (Considerando Filtros de Análise)</h2>
               <BuyboxWinnersDisplay buyboxWinners={buyboxWinners} isLoading={isLoading && buyboxWinners.length === 0 && analysis_productsFilteredByMarketplace.length > 0} />
-              {(isLoading && analysis_productsFilteredByMarketplace.length === 0 && allProducts.length > 0 && (analysis_selectedMarketplace !== null || debouncedAnalysis_skuSearchTerm !== '')) && <p className="text-center text-muted-foreground">Carregando dados de buybox...</p>}
-              {(!isLoading && analysis_productsFilteredByMarketplace.length === 0 && allProducts.length > 0 && (analysis_selectedMarketplace !== null || debouncedAnalysis_skuSearchTerm !== '')) &&
+              {(isLoading && analysis_productsFilteredByMarketplace.length === 0 && allProducts.length > 0 && (analysis_selectedMarketplace !== null || analysis_selectedInternalSku !== null)) && <p className="text-center text-muted-foreground">Carregando dados de buybox...</p>}
+              {(!isLoading && analysis_productsFilteredByMarketplace.length === 0 && allProducts.length > 0 && (analysis_selectedMarketplace !== null || analysis_selectedInternalSku !== null)) &&
                 <Card className="shadow-lg">
                   <CardHeader>
                     <CardTitle>Vencedores de Buybox por Loja</CardTitle>
