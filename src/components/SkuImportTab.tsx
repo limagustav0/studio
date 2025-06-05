@@ -72,32 +72,39 @@ export function SkuImportTab({ onImport }: SkuImportTabProps) {
         let importedCount = 0;
         let skippedCount = 0;
 
-        const columnNotFoundDescription = `Verifique se o arquivo XLSX contém as colunas "${EXPECTED_PRIMARY_SKU_COLUMN}" e uma das seguintes para o SKU interno: "${EXPECTED_INTERNAL_SKU_COLUMN_UNDERSCORE}" ou "${EXPECTED_INTERNAL_SKU_COLUMN_SPACE}".`;
-
+        const columnNotFoundDescription = `Verifique se o arquivo XLSX contém as colunas "${EXPECTED_PRIMARY_SKU_COLUMN}" e uma das seguintes para o SKU interno: "${EXPECTED_INTERNAL_SKU_COLUMN_UNDERSCORE}" ou "${EXPECTED_INTERNAL_SKU_COLUMN_SPACE}". Verifique também se não há espaços extras nos nomes dos cabeçalhos no arquivo Excel.`;
+        
         if (data.length === 0) {
            toast({
             variant: "destructive",
             title: "Arquivo Vazio ou Inválido",
-            description: `O arquivo parece estar vazio ou não contém as colunas esperadas. ${columnNotFoundDescription}`,
+            description: `O arquivo parece estar vazio ou não contém dados nas linhas esperadas. ${columnNotFoundDescription}`,
           });
           setIsProcessing(false);
           return;
         }
 
-        // Check for expected columns in the first row (header)
         const firstRow = data[0];
-        const hasPrimarySkuColumn = firstRow && firstRow.hasOwnProperty(EXPECTED_PRIMARY_SKU_COLUMN);
-        const hasInternalSkuColumn = firstRow && (firstRow.hasOwnProperty(EXPECTED_INTERNAL_SKU_COLUMN_UNDERSCORE) || firstRow.hasOwnProperty(EXPECTED_INTERNAL_SKU_COLUMN_SPACE));
-        
-        let actualInternalSkuColumnName = "";
-        if (firstRow && firstRow.hasOwnProperty(EXPECTED_INTERNAL_SKU_COLUMN_UNDERSCORE)) {
-            actualInternalSkuColumnName = EXPECTED_INTERNAL_SKU_COLUMN_UNDERSCORE;
-        } else if (firstRow && firstRow.hasOwnProperty(EXPECTED_INTERNAL_SKU_COLUMN_SPACE)) {
-            actualInternalSkuColumnName = EXPECTED_INTERNAL_SKU_COLUMN_SPACE;
+        const headerKeys = Object.keys(firstRow);
+
+        let actualPrimarySkuColumnName: string | undefined = undefined;
+        for (const key of headerKeys) {
+            if (key.trim() === EXPECTED_PRIMARY_SKU_COLUMN) {
+                actualPrimarySkuColumnName = key;
+                break;
+            }
         }
 
+        let actualInternalSkuColumnName: string | undefined = undefined;
+        for (const key of headerKeys) {
+            const trimmedKey = key.trim();
+            if (trimmedKey === EXPECTED_INTERNAL_SKU_COLUMN_SPACE || trimmedKey === EXPECTED_INTERNAL_SKU_COLUMN_UNDERSCORE) {
+                actualInternalSkuColumnName = key;
+                break;
+            }
+        }
 
-        if (!hasPrimarySkuColumn || !hasInternalSkuColumn) {
+        if (!actualPrimarySkuColumnName || !actualInternalSkuColumnName) {
           toast({
             variant: "destructive",
             title: "Colunas Não Encontradas",
@@ -109,8 +116,8 @@ export function SkuImportTab({ onImport }: SkuImportTabProps) {
 
 
         data.forEach(row => {
-          const primarySku = row[EXPECTED_PRIMARY_SKU_COLUMN];
-          const internalSku = row[actualInternalSkuColumnName];
+          const primarySku = row[actualPrimarySkuColumnName!];
+          const internalSku = row[actualInternalSkuColumnName!];
 
           if (primarySku && (typeof primarySku === 'string' || typeof primarySku === 'number') &&
               internalSku && (typeof internalSku === 'string' || typeof internalSku === 'number')) {
@@ -123,16 +130,17 @@ export function SkuImportTab({ onImport }: SkuImportTabProps) {
 
         if (importedCount > 0) {
           onImport(importedSkus);
+          // The success toast is now handled in the main page component after onImport
         } else {
            toast({
             variant: "destructive",
             title: "Nenhum SKU Válido Encontrado",
-            description: `Nenhuma associação válida de SKU Principal para SKU Interno foi encontrada. Verifique as colunas "${EXPECTED_PRIMARY_SKU_COLUMN}" e ("${EXPECTED_INTERNAL_SKU_COLUMN_UNDERSCORE}" ou "${EXPECTED_INTERNAL_SKU_COLUMN_SPACE}").`,
+            description: `Nenhuma associação válida de SKU Principal para SKU Interno foi encontrada. Verifique os dados nas colunas "${actualPrimarySkuColumnName}" e "${actualInternalSkuColumnName}".`,
           });
         }
         if (skippedCount > 0) {
            toast({
-            variant: "default", // Not necessarily destructive, just informational
+            variant: "default",
             title: "Linhas Ignoradas",
             description: `${skippedCount} linha(s) foram ignoradas devido a dados ausentes ou inválidos para SKU Principal ou SKU Interno.`,
           });
@@ -212,7 +220,7 @@ export function SkuImportTab({ onImport }: SkuImportTabProps) {
                 <CardContent className="text-sm text-muted-foreground space-y-1">
                     <p>1. Certifique-se de que o arquivo é do formato XLSX ou XLS.</p>
                     <p>2. A primeira planilha do arquivo será utilizada.</p>
-                    <p>3. Os cabeçalhos da primeira linha devem ser <strong>{EXPECTED_PRIMARY_SKU_COLUMN}</strong> e (<strong>{EXPECTED_INTERNAL_SKU_COLUMN_UNDERSCORE}</strong> ou <strong>{EXPECTED_INTERNAL_SKU_COLUMN_SPACE}</strong>).</p>
+                    <p>3. Os cabeçalhos da primeira linha devem ser <strong>{EXPECTED_PRIMARY_SKU_COLUMN}</strong> e (<strong>{EXPECTED_INTERNAL_SKU_COLUMN_UNDERSCORE}</strong> ou <strong>{EXPECTED_INTERNAL_SKU_COLUMN_SPACE}</strong>). Verifique se não há espaços extras.</p>
                     <p>4. SKUs principais duplicados no arquivo? O último encontrado prevalecerá.</p>
                     <p>5. A importação mesclará os dados com os SKUs internos já existentes. Se um SKU Principal do arquivo já existir no sistema, seu SKU Interno será atualizado.</p>
                 </CardContent>
