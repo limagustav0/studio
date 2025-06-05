@@ -9,7 +9,7 @@ export interface Product {
   descricao: string;
   avaliacao: number; // e.g., 0-5
   imagem: string;
-  change_price?: boolean; // Added for price change tracking
+  change_price?: number; // Updated: now a number representing count or sum
 }
 
 export interface PriceTrendProductInfo {
@@ -87,5 +87,28 @@ export interface UniqueProductSummary {
   sellerCount: number; // Number of unique sellers for this SKU
   minPrice: number;
   maxPrice: number;
-  internalSku?: string; 
+  internalSku?: string;
+}
+
+// Types for PriceChangeSellersDisplay
+export interface SellerPriceChangeSummary {
+  sellerName: string;
+  totalChangeSum: number; // Sum of change_price counts
+  distinctSkusChangedCount: number; // Count of unique SKUs with changes
+}
+
+export interface SkuChangeFrequency {
+  sku: string;
+  descricao: string;
+  imagem: string;
+  totalChangeSum: number; // Sum of change_price counts for this SKU
+}
+
+export interface AggregatedProductChangeDetail {
+  sku: string;
+  descricao: string;
+  imagem: string;
+  marketplace: string;
+  totalChangesSum: number; // Sum of change_price for this specific SKU+Marketplace by the seller
+  latestChangeDate: string | null; // Most recent data_hora for this change
 }

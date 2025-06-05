@@ -17,21 +17,31 @@ interface ApiProduct {
   num_avaliacoes?: string;
   link_produto?: string;
   imagem: string;
-  change_price?: any; // Can be boolean, string "true"/"false", number 1/0
+  change_price?: any; // Can be boolean, string "true"/"false", number 1/0, or a count
 }
 
-const parseChangePrice = (value: any): boolean => {
-  if (typeof value === 'boolean') return value;
-  if (typeof value === 'string') return value.toLowerCase() === 'true';
-  if (typeof value === 'number') return value === 1;
-  return false; // Default to false if undefined, null, or unknown format
+const parseChangePriceToNumericCount = (value: any): number => {
+  if (typeof value === 'number') {
+    return Math.max(0, Math.floor(value)); // Use the number directly, ensure non-negative integer
+  }
+  if (typeof value === 'string') {
+    if (value.toLowerCase() === 'true') return 1;
+    if (value.toLowerCase() === 'false') return 0;
+    const num = parseInt(value, 10);
+    if (!isNaN(num)) return Math.max(0, Math.floor(num));
+    return 0; // String is not "true", "false", or a parseable number
+  }
+  if (typeof value === 'boolean') {
+    return value ? 1 : 0;
+  }
+  return 0; // Default for undefined, null, or other types
 };
 
 export const fetchData = async (): Promise<Product[]> => {
-  const apiUrl = '/api/price-data'; 
+  const apiUrl = '/api/price-data';
   try {
     const response = await fetch(apiUrl);
-    
+
     if (!response.ok) {
       let errorBody = '';
       try {
@@ -42,17 +52,17 @@ export const fetchData = async (): Promise<Product[]> => {
       console.error(`API request to ${apiUrl} failed with status ${response.status}. Body: ${errorBody}`);
       throw new Error(`API request failed with status ${response.status}.`);
     }
-    
+
     const apiProducts: ApiProduct[] = await response.json();
 
     return apiProducts.map((apiProduct: ApiProduct, index: number): Product => {
       let currentId = apiProduct.id;
       if (!currentId || String(currentId).trim() === "") {
-        const sanitizedDateTime = (apiProduct.data_hora || '').replace(/[\s:-]/g, ''); 
+        const sanitizedDateTime = (apiProduct.data_hora || '').replace(/[\s:-]/g, '');
         currentId = `fallback-${apiProduct.sku || 'no-sku'}-${apiProduct.loja || 'no-loja'}-${sanitizedDateTime}-${index}`;
       }
       return {
-        id: String(currentId), 
+        id: String(currentId),
         sku: apiProduct.sku,
         loja: apiProduct.loja,
         preco_final: parseFloat(apiProduct.preco_final) || 0,
@@ -61,11 +71,11 @@ export const fetchData = async (): Promise<Product[]> => {
         descricao: apiProduct.descricao,
         avaliacao: parseFloat(apiProduct.avaliacao) || 0,
         imagem: apiProduct.imagem || 'https://placehold.co/300x200.png',
-        change_price: parseChangePrice(apiProduct.change_price),
+        change_price: parseChangePriceToNumericCount(apiProduct.change_price),
       };
     });
 
-  } catch (error) { 
+  } catch (error) {
     console.error(`Fetch operation failed for ${apiUrl}:`, error);
     if (error instanceof Error) {
       throw error;
@@ -94,7 +104,7 @@ export const calculateMetrics = (products: Product[]): Metrics => {
       averagePrice: 0,
       topRatedProduct: null,
       mostFrequentStore: null,
-      totalDataPoints: products.length, 
+      totalDataPoints: products.length,
       uniqueSKUs: new Set(products.map(p => p.sku).filter(Boolean)).size,
       uniqueSellers: new Set(products.map(p => p.loja).filter(Boolean)).size,
       uniqueMarketplaces: new Set(products.map(p => p.marketplace).filter(Boolean)).size,
@@ -134,7 +144,7 @@ export const analyzePriceTrends = (products: Product[], count: number = 3): Pric
   if (!products || products.length === 0) return [];
   const productsBySku: Record<string, Product[]> = {};
   products.forEach(product => {
-    if (!product || !product.sku) return; 
+    if (!product || !product.sku) return;
     if (!productsBySku[product.sku]) {
       productsBySku[product.sku] = [];
     }
@@ -145,23 +155,23 @@ export const analyzePriceTrends = (products: Product[], count: number = 3): Pric
 
   for (const sku in productsBySku) {
     const skuProducts = productsBySku[sku]
-      .filter(p => p && p.data_hora && p.preco_final !== null && p.preco_final !== undefined) 
+      .filter(p => p && p.data_hora && p.preco_final !== null && p.preco_final !== undefined)
       .sort((a, b) => {
         try {
           return parseISO(a.data_hora).getTime() - parseISO(b.data_hora).getTime();
         } catch {
-          return 0; 
+          return 0;
         }
       });
 
     if (skuProducts.length < 2) continue;
 
-    const productAtEarliestDate = skuProducts[0]; 
+    const productAtEarliestDate = skuProducts[0];
     const productAtLatestDate = skuProducts[skuProducts.length - 1];
-    
+
     try {
-      const earliestDateValid = parseISO(productAtEarliestDate.data_hora);
-      const latestDateValid = parseISO(productAtLatestDate.data_hora);
+      parseISO(productAtEarliestDate.data_hora); // Validate date
+      parseISO(productAtLatestDate.data_hora); // Validate date
       if (productAtEarliestDate.data_hora === productAtLatestDate.data_hora && productAtEarliestDate.preco_final === productAtLatestDate.preco_final) continue;
     } catch (e) {
       console.warn(`Skipping trend analysis for SKU ${sku} due to invalid date format or insufficient data. Error: ${e}`);
@@ -170,7 +180,7 @@ export const analyzePriceTrends = (products: Product[], count: number = 3): Pric
 
     const priceChangePercentage = ((productAtLatestDate.preco_final - productAtEarliestDate.preco_final) / productAtEarliestDate.preco_final) * 100;
 
-     if (Math.abs(priceChangePercentage) > 0.001 || productAtEarliestDate.data_hora !== productAtLatestDate.data_hora) { 
+     if (Math.abs(priceChangePercentage) > 0.001 || productAtEarliestDate.data_hora !== productAtLatestDate.data_hora) {
       priceChanges.push({
         sku: productAtLatestDate.sku,
         descricao: productAtLatestDate.descricao,
@@ -221,7 +231,7 @@ export const calculateBuyboxWins = (products: Product[]): BuyboxWinner[] => {
     const skuProducts = productsBySku[sku];
     if (skuProducts.length === 0) continue;
 
-    let minPrice = Infinity; 
+    let minPrice = Infinity;
     skuProducts.forEach(p => {
       if (p.preco_final < minPrice) {
         minPrice = p.preco_final;
@@ -262,6 +272,9 @@ export const analyzeSellerPerformance = (
   if (sellerProducts.length > 0) {
     sellerProducts.sort((a, b) => {
       try {
+        if (!a.data_hora && !b.data_hora) return 0;
+        if (!a.data_hora) return 1;
+        if (!b.data_hora) return -1;
         return compareDesc(parseISO(a.data_hora), parseISO(b.data_hora));
       } catch {
         return 0;
@@ -269,7 +282,8 @@ export const analyzeSellerPerformance = (
     });
     if (sellerProducts[0] && sellerProducts[0].data_hora) {
       try {
-        lastUpdateTime = sellerProducts[0].data_hora; 
+        parseISO(sellerProducts[0].data_hora); // validate
+        lastUpdateTime = sellerProducts[0].data_hora;
       } catch (e) {
         console.warn("Could not parse date for lastUpdateTime", e);
         lastUpdateTime = null;
@@ -302,16 +316,20 @@ export const analyzeSellerPerformance = (
     }
     productsBySkuGlobal[p.sku].push(p);
   });
-  
+
   const skusListedBySeller = new Set(sellerProducts.map(p => p.sku));
 
   skusListedBySeller.forEach(sku => {
-    const sellerProductForSku = sellerProducts.find(p => p.sku === sku && p.data_hora);
-    if (!sellerProductForSku) return; 
+    const sellerProductInstancesForSku = sellerProducts
+      .filter(p => p.sku === sku && p.data_hora)
+      .sort((a,b) => compareDesc(parseISO(a.data_hora), parseISO(b.data_hora)));
+
+    if (sellerProductInstancesForSku.length === 0) return;
+    const sellerProductForSku = sellerProductInstancesForSku[0]; // Most recent instance
 
     const allListingsForThisSku = productsBySkuGlobal[sku] || [];
-    
-    if (allListingsForThisSku.length === 0) { 
+
+    if (allListingsForThisSku.length === 0) {
       buyboxesWon++;
       productsWinningBuybox.push({
         sku: sellerProductForSku.sku,
@@ -321,32 +339,32 @@ export const analyzeSellerPerformance = (
         sellerPrice: sellerProductForSku.preco_final,
         winningPrice: sellerProductForSku.preco_final,
         winningSeller: selectedSellerName,
-        priceDifferenceToNext: null, 
+        priceDifferenceToNext: null,
         nextCompetitorSellerName: null,
         marketplace: sellerProductForSku.marketplace,
       });
-      return; 
+      return;
     }
 
     let globalMinPrice = Infinity;
-    let winningSellerForSkuAtGlobalMin = ''; 
-    
+    let winningSellerForSkuAtGlobalMin = '';
+
     allListingsForThisSku.forEach(p => {
       if (p.preco_final < globalMinPrice) {
         globalMinPrice = p.preco_final;
         winningSellerForSkuAtGlobalMin = p.loja;
       } else if (p.preco_final === globalMinPrice) {
         if (winningSellerForSkuAtGlobalMin !== selectedSellerName && p.loja === selectedSellerName) {
-           winningSellerForSkuAtGlobalMin = selectedSellerName; 
-        } else if (!winningSellerForSkuAtGlobalMin) { 
+           winningSellerForSkuAtGlobalMin = selectedSellerName;
+        } else if (!winningSellerForSkuAtGlobalMin) {
             winningSellerForSkuAtGlobalMin = p.loja;
         }
       }
     });
-    
+
     const sellerPriceForSku = sellerProductForSku.preco_final;
 
-    if (sellerPriceForSku <= globalMinPrice) { 
+    if (sellerPriceForSku <= globalMinPrice) {
       buyboxesWon++;
       let nextCompetitorPrice: number | null = null;
       let nextCompetitorName: string | null = null;
@@ -360,11 +378,10 @@ export const analyzeSellerPerformance = (
             nextCompetitorPrice = competitor.preco_final;
             nextCompetitorName = competitor.loja;
           } else if (competitor.preco_final === nextCompetitorPrice) {
-             // If multiple competitors at the same next price, just take one.
-            nextCompetitorName = competitor.loja; 
+            nextCompetitorName = competitor.loja;
           }
         });
-      
+
       let priceDifferenceToNext: number | null = null;
       if (nextCompetitorPrice !== null) {
         priceDifferenceToNext = nextCompetitorPrice - sellerPriceForSku;
@@ -376,13 +393,13 @@ export const analyzeSellerPerformance = (
         imagem: sellerProductForSku.imagem,
         data_hora: sellerProductForSku.data_hora,
         sellerPrice: sellerPriceForSku,
-        winningPrice: sellerPriceForSku, 
-        winningSeller: selectedSellerName, 
+        winningPrice: sellerPriceForSku,
+        winningSeller: selectedSellerName,
         priceDifferenceToNext: priceDifferenceToNext,
         nextCompetitorSellerName: (priceDifferenceToNext !== null && priceDifferenceToNext >=0) ? nextCompetitorName : null,
         marketplace: sellerProductForSku.marketplace,
       });
-    } else { 
+    } else {
       buyboxesLost++;
       productsLosingBuybox.push({
         sku: sellerProductForSku.sku,
@@ -391,7 +408,7 @@ export const analyzeSellerPerformance = (
         data_hora: sellerProductForSku.data_hora,
         sellerPrice: sellerPriceForSku,
         winningPrice: globalMinPrice,
-        winningSeller: winningSellerForSkuAtGlobalMin, 
+        winningSeller: winningSellerForSkuAtGlobalMin,
         priceDifference: sellerPriceForSku - globalMinPrice,
         marketplace: sellerProductForSku.marketplace,
       });
@@ -430,13 +447,18 @@ export const generateUniqueProductSummaries = (products: Product[]): UniqueProdu
 
     const sortedSkuProducts = [...skuProducts].sort((a, b) => {
       try {
+        if (!a.data_hora && !b.data_hora) return 0;
+        if (!a.data_hora) return 1; // Sort undefined/null dates to the end
+        if (!b.data_hora) return -1;
         return compareDesc(parseISO(a.data_hora), parseISO(b.data_hora));
       } catch {
         return 0;
       }
     });
 
-    const latestProductInstance = sortedSkuProducts[0]; 
+    const latestProductInstance = sortedSkuProducts[0];
+    if (!latestProductInstance) continue;
+
 
     const uniqueMarketplacesForSku = Array.from(new Set(skuProducts.map(p => p.marketplace).filter(Boolean)));
     const uniqueSellersForSku = new Set(skuProducts.map(p => p.loja).filter(Boolean));
@@ -447,7 +469,7 @@ export const generateUniqueProductSummaries = (products: Product[]): UniqueProdu
       if (p.preco_final < minPrice) minPrice = p.preco_final;
       if (p.preco_final > maxPrice) maxPrice = p.preco_final;
     });
-    
+
     minPrice = minPrice === Infinity ? 0 : minPrice;
     maxPrice = maxPrice === -Infinity ? 0 : maxPrice;
 
@@ -465,4 +487,3 @@ export const generateUniqueProductSummaries = (products: Product[]): UniqueProdu
 
   return summaries.sort((a,b) => b.sellerCount - a.sellerCount || a.sku.localeCompare(b.sku));
 };
-
