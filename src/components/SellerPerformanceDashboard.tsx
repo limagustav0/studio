@@ -242,8 +242,7 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
                     <TableHead>Produto (SKU)</TableHead>
                     <TableHead>Vendedor (Marketplace)</TableHead>
                     <TableHead className="text-right">Preços</TableHead>
-                    <TableHead>Vencedor do Buybox</TableHead>
-                    <TableHead className="text-right">Diferença</TableHead>
+                    <TableHead>Vencedor (Diferença)</TableHead>
                     <TableHead className="text-right">Ultima raspagem</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -278,8 +277,10 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
                           <span className="font-semibold text-green-600">R$ {item.winningPrice.toFixed(2)}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="max-w-[120px] truncate" title={item.winningSeller}>{item.winningSeller}</TableCell>
-                      <TableCell className="text-right text-red-600">R$ {item.priceDifference.toFixed(2)}</TableCell>
+                      <TableCell>
+                         <div className="max-w-[150px] truncate" title={item.winningSeller}>{item.winningSeller}</div>
+                         <div className="text-xs text-red-600">Perdendo por R$ {item.priceDifference.toFixed(2)}</div>
+                      </TableCell>
                       <TableCell className="text-right text-xs text-muted-foreground">{formatTableCellDateTime(item.data_hora)}</TableCell>
                     </TableRow>
                   ))}
