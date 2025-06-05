@@ -10,6 +10,7 @@ import { SellerPerformanceDashboard } from '@/components/SellerPerformanceDashbo
 import { ProductList } from '@/components/ProductList';
 import { ProductSummaryTable } from '@/components/ProductSummaryTable';
 import { SearchBar } from '@/components/SearchBar';
+import { SkuImportTab } from '@/components/SkuImportTab'; // Import the new component
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardHeader, CardContent, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -17,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Filter, List, BarChartBig, Search, Package, LayoutGrid, ChevronDown, Users } from 'lucide-react';
+import { Filter, List, BarChartBig, Search, Package, LayoutGrid, ChevronDown, Users, UploadCloud } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -73,9 +74,6 @@ export default function HomePage() {
     if (typeof window !== 'undefined') {
       if (Object.keys(internalSkusMap).length > 0) {
         localStorage.setItem(INTERNAL_SKUS_LOCAL_STORAGE_KEY, JSON.stringify(internalSkusMap));
-      } else {
-        // Optional: remove if empty to clean up, or keep to avoid re-checking on next load if it was intentionally cleared.
-        // localStorage.removeItem(INTERNAL_SKUS_LOCAL_STORAGE_KEY);
       }
     }
   }, [internalSkusMap]);
@@ -248,6 +246,18 @@ export default function HomePage() {
     }));
   };
 
+  const handleBulkInternalSkuImport = (importedSkus: Record<string, string>) => {
+    setInternalSkusMap(prevMap => ({
+      ...prevMap,
+      ...importedSkus,
+    }));
+    toast({
+      title: "Importação Concluída",
+      description: `${Object.keys(importedSkus).length} SKUs internos foram importados/atualizados.`,
+    });
+  };
+
+
   // Memoized summaries for "Visão Geral do Produto" Tab
   const overviewTab_filteredSummaries = useMemo(() => {
     let filtered = uniqueProductSummaries;
@@ -306,7 +316,7 @@ export default function HomePage() {
       <AppHeader />
       <main className="flex-grow container mx-auto px-4 py-8 space-y-8">
         <Tabs defaultValue="analysis" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-6 bg-card p-1 rounded-lg">
+          <TabsList className="grid w-full grid-cols-4 mb-6 bg-card p-1 rounded-lg">
             <TabsTrigger value="analysis" className="py-3 text-base hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg">
                 <BarChartBig className="mr-2 h-5 w-5" /> Análise Detalhada
             </TabsTrigger>
@@ -315,6 +325,9 @@ export default function HomePage() {
             </TabsTrigger>
             <TabsTrigger value="all-products" className="py-3 text-base hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg">
                 <Package className="mr-2 h-5 w-5" /> Todos os Produtos
+            </TabsTrigger>
+            <TabsTrigger value="sku-import" className="py-3 text-base hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg">
+                <UploadCloud className="mr-2 h-5 w-5" /> Importar SKUs Internos
             </TabsTrigger>
           </TabsList>
 
@@ -325,7 +338,7 @@ export default function HomePage() {
                     <CardDescription>Aplique filtros para refinar os dados exibidos nas seções de Análise de Desempenho e Vencedores de Buybox abaixo.</CardDescription>
                 </CardHeader>
                 <CardContent className="px-2 sm:px-6 space-y-4">
-                   <div className="grid grid-cols-1 md:grid-cols-1 gap-4"> {/* Alterado para md:grid-cols-1 para ocupar a largura total */}
+                   <div className="grid grid-cols-1 md:grid-cols-1 gap-4"> 
                     <div>
                         <Label htmlFor="analysis-marketplace-filter" className="text-sm font-medium">Filtrar por Marketplace</Label>
                         <Select
@@ -534,6 +547,9 @@ export default function HomePage() {
             ) : (
                 <ProductList products={allProductsTab_filteredProducts} />
             )}
+          </TabsContent>
+          <TabsContent value="sku-import" className="space-y-6">
+            <SkuImportTab onImport={handleBulkInternalSkuImport} />
           </TabsContent>
         </Tabs>
       </main>
