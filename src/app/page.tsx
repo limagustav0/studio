@@ -13,6 +13,7 @@ import { SearchBar } from '@/components/SearchBar';
 import { SkuImportTab } from '@/components/SkuImportTab'; // Import the new component
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/hooks/use-toast";
+import { useDebounce } from "@/hooks/use-debounce"; // Import useDebounce
 import { Card, CardHeader, CardContent, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -28,6 +29,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 const ALL_MARKETPLACES_OPTION_VALUE = "--all-marketplaces--";
 const DEFAULT_SELLER_FOCUS = "HAIRPRO";
 const INTERNAL_SKUS_LOCAL_STORAGE_KEY = 'priceWiseInternalSkusMap';
+const SEARCH_DEBOUNCE_DELAY = 500; // milliseconds
 
 export default function HomePage() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
@@ -49,11 +51,14 @@ export default function HomePage() {
   // State for "Todos os Produtos" Tab
   const [allProductsTab_selectedMarketplace, setAllProductsTab_selectedMarketplace] = useState<string | null>(null);
   const [allProductsTab_searchTerm, setAllProductsTab_searchTerm] = useState<string>('');
+  const debouncedAllProductsTab_SearchTerm = useDebounce(allProductsTab_searchTerm, SEARCH_DEBOUNCE_DELAY);
+
 
   // State for "Visão Geral do Produto" Tab
   const [uniqueProductSummaries, setUniqueProductSummaries] = useState<UniqueProductSummary[]>([]);
   const [overviewTab_selectedMarketplace, setOverviewTab_selectedMarketplace] = useState<string | null>(null);
   const [overviewTab_searchTerm, setOverviewTab_searchTerm] = useState<string>('');
+  const debouncedOverviewTab_SearchTerm = useDebounce(overviewTab_searchTerm, SEARCH_DEBOUNCE_DELAY);
 
   // Load internal SKUs from localStorage on initial mount
   useEffect(() => {
@@ -209,8 +214,8 @@ export default function HomePage() {
       filtered = filtered.filter(p => p.marketplace === allProductsTab_selectedMarketplace);
     }
 
-    if (allProductsTab_searchTerm) {
-      const lowerSearchTerm = allProductsTab_searchTerm.toLowerCase();
+    if (debouncedAllProductsTab_SearchTerm) {
+      const lowerSearchTerm = debouncedAllProductsTab_SearchTerm.toLowerCase();
       filtered = filtered.filter(p =>
         p.descricao.toLowerCase().includes(lowerSearchTerm) ||
         p.sku.toLowerCase().includes(lowerSearchTerm) ||
@@ -218,7 +223,7 @@ export default function HomePage() {
       );
     }
     return filtered;
-  }, [allProducts, allProductsTab_selectedMarketplace, allProductsTab_searchTerm]);
+  }, [allProducts, allProductsTab_selectedMarketplace, debouncedAllProductsTab_SearchTerm]);
 
   const handleAllProductsMarketplaceChange = (value: string) => {
     const newMarketplace = value === ALL_MARKETPLACES_OPTION_VALUE ? null : value;
@@ -230,14 +235,14 @@ export default function HomePage() {
     if (allProductsTab_selectedMarketplace && allProductsTab_selectedMarketplace !== ALL_MARKETPLACES_OPTION_VALUE) {
       return `Exibindo ${count} produto(s) para o marketplace "${allProductsTab_selectedMarketplace}".`;
     }
-    if(allProductsTab_searchTerm && (!allProductsTab_selectedMarketplace || allProductsTab_selectedMarketplace === ALL_MARKETPLACES_OPTION_VALUE)) {
+    if(debouncedAllProductsTab_SearchTerm && (!allProductsTab_selectedMarketplace || allProductsTab_selectedMarketplace === ALL_MARKETPLACES_OPTION_VALUE)) {
          return `Exibindo ${count} produto(s) correspondente(s) à pesquisa em todos os marketplaces.`;
     }
-     if(allProductsTab_searchTerm && allProductsTab_selectedMarketplace && allProductsTab_selectedMarketplace !== ALL_MARKETPLACES_OPTION_VALUE) {
+     if(debouncedAllProductsTab_SearchTerm && allProductsTab_selectedMarketplace && allProductsTab_selectedMarketplace !== ALL_MARKETPLACES_OPTION_VALUE) {
          return `Exibindo ${count} produto(s) correspondente(s) à pesquisa para o marketplace "${allProductsTab_selectedMarketplace}".`;
     }
     return `Exibindo ${count} produto(s) (todos os marketplaces).`;
-  }, [allProductsTab_filteredProducts, allProductsTab_selectedMarketplace, allProductsTab_searchTerm]);
+  }, [allProductsTab_filteredProducts, allProductsTab_selectedMarketplace, debouncedAllProductsTab_SearchTerm]);
 
   const handleInternalSkuChange = (productSku: string, newInternalSku: string) => {
     setInternalSkusMap(prevMap => ({
@@ -266,8 +271,8 @@ export default function HomePage() {
       filtered = filtered.filter(summary => summary.marketplaces.includes(overviewTab_selectedMarketplace));
     }
 
-    if (overviewTab_searchTerm) {
-      const lowerSearchTerm = overviewTab_searchTerm.toLowerCase();
+    if (debouncedOverviewTab_SearchTerm) {
+      const lowerSearchTerm = debouncedOverviewTab_SearchTerm.toLowerCase();
       filtered = filtered.filter(summary =>
         summary.descricao.toLowerCase().includes(lowerSearchTerm) ||
         summary.sku.toLowerCase().includes(lowerSearchTerm)
@@ -277,7 +282,7 @@ export default function HomePage() {
       ...summary,
       internalSku: internalSkusMap[summary.sku] || '', 
     }));
-  }, [uniqueProductSummaries, overviewTab_selectedMarketplace, overviewTab_searchTerm, internalSkusMap]);
+  }, [uniqueProductSummaries, overviewTab_selectedMarketplace, debouncedOverviewTab_SearchTerm, internalSkusMap]);
 
   const handleOverviewMarketplaceChange = (value: string) => {
     const newMarketplace = value === ALL_MARKETPLACES_OPTION_VALUE ? null : value;
@@ -292,13 +297,13 @@ export default function HomePage() {
     } else {
       message += ` (todos os marketplaces)`;
     }
-    if (overviewTab_searchTerm) {
+    if (debouncedOverviewTab_SearchTerm) {
       message += ` correspondente(s) à pesquisa.`;
     } else {
       message += `.`;
     }
     return message;
-  }, [overviewTab_filteredSummaries, overviewTab_selectedMarketplace, overviewTab_searchTerm]);
+  }, [overviewTab_filteredSummaries, overviewTab_selectedMarketplace, debouncedOverviewTab_SearchTerm]);
 
   const getSelectedSellersText = () => {
     if (analysis_selectedSellers.length === 0) {
