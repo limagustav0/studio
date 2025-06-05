@@ -269,16 +269,16 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
                       </TableCell>
                       <TableCell className="text-right">
                         <div>
-                          <span className="text-xs text-muted-foreground mr-1">Seu:</span>
-                          <span className="text-blue-600">R$ {item.sellerPrice.toFixed(2)}</span>
-                        </div>
-                        <div>
                           <span className="text-xs text-muted-foreground mr-1">Vencedor:</span>
                           <span className="font-semibold text-green-600">R$ {item.winningPrice.toFixed(2)}</span>
                         </div>
+                        <div>
+                          <span className="text-xs text-muted-foreground mr-1">Seu:</span>
+                          <span className="text-blue-600">R$ {item.sellerPrice.toFixed(2)}</span>
+                        </div>
                       </TableCell>
                       <TableCell>
-                         <div className="max-w-[150px] truncate" title={item.winningSeller}>{item.winningSeller}</div>
+                         <div className="font-medium max-w-[150px] truncate" title={item.winningSeller}>{item.winningSeller}</div>
                          <div className="text-xs text-red-600">Perdendo por R$ {item.priceDifference.toFixed(2)}</div>
                       </TableCell>
                       <TableCell className="text-right text-xs text-muted-foreground">{formatTableCellDateTime(item.data_hora)}</TableCell>
