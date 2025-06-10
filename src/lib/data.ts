@@ -18,6 +18,7 @@ interface ApiProduct {
   link_produto?: string;
   imagem: string;
   change_price?: any; // Can be boolean, string "true"/"false", number 1/0, or a count
+  status?: string; // Added status field
 }
 
 const parseChangePriceToNumericCount = (value: any): number => {
@@ -55,7 +56,10 @@ export const fetchData = async (): Promise<Product[]> => {
 
     const apiProducts: ApiProduct[] = await response.json();
 
-    return apiProducts.map((apiProduct: ApiProduct, index: number): Product => {
+    // Filter for products with status "ativo"
+    const activeApiProducts = apiProducts.filter(apiProduct => apiProduct.status === "ativo");
+
+    return activeApiProducts.map((apiProduct: ApiProduct, index: number): Product => {
       let currentId = apiProduct.id;
       if (!currentId || String(currentId).trim() === "") {
         const sanitizedDateTime = (apiProduct.data_hora || '').replace(/[\s:-]/g, '');
@@ -487,3 +491,6 @@ export const generateUniqueProductSummaries = (products: Product[]): UniqueProdu
 
   return summaries.sort((a,b) => b.sellerCount - a.sellerCount || a.sku.localeCompare(b.sku));
 };
+
+
+    
