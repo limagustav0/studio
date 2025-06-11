@@ -6,7 +6,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: 'Monitoramento KAMI PRICING',
+  title: 'MONITORAMENTO DE PREÇOS',
   description: 'Dashboard de monitoramento e análise de preços de produtos.',
 };
 

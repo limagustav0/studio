@@ -647,7 +647,7 @@ export default function HomePage() {
         </Tabs>
       </main>
       <footer className="bg-card text-card-foreground py-6 text-center text-sm border-t">
-        <p>&copy; {new Date().getFullYear()} Monitoramento KAMI PRICING. Todos os direitos reservados.</p>
+        <p>&copy; {new Date().getFullYear()} MONITORAMENTO DE PREÇOS. Todos os direitos reservados.</p>
       </footer>
       <Toaster />
     </div>
