@@ -14,7 +14,7 @@ interface ProductSummaryTableProps {
   summaries: UniqueProductSummary[];
   isLoading: boolean;
   onInternalSkuChange: (productSku: string, newInternalSku: string) => void;
-  onBrandChange: (productSku: string, newBrand: string) => void; // Nova prop para marca
+  onBrandChange: (productSku: string, newBrand: string) => void;
 }
 
 const formatSummaryTableDate = (isoDateString: string | null | undefined) => {
@@ -33,17 +33,17 @@ export function ProductSummaryTable({ summaries, isLoading, onInternalSkuChange,
       <div className="rounded-md border">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead className="w-[80px] hidden sm:table-cell">Imagem</TableHead>
-              <TableHead>Produto (SKU)</TableHead>
-              <TableHead>SKU Interno</TableHead>
-              <TableHead>Marca</TableHead> {/* Nova Coluna */}
-              <TableHead>Marketplaces</TableHead>
-              <TableHead className="text-center">Sellers</TableHead>
-              <TableHead className="text-right">Menor Preço</TableHead>
-              <TableHead className="text-right">Maior Preço</TableHead>
-              <TableHead className="text-right">Última Raspagem</TableHead>
-            </TableRow>
+            <TableRow
+              ><TableHead className="w-[80px] hidden sm:table-cell">Imagem</TableHead
+              ><TableHead>Produto (SKU)</TableHead
+              ><TableHead>SKU Interno</TableHead
+              ><TableHead>Marca</TableHead
+              ><TableHead>Marketplaces</TableHead
+              ><TableHead className="text-center">Sellers</TableHead
+              ><TableHead className="text-right">Menor Preço</TableHead
+              ><TableHead className="text-right">Maior Preço</TableHead
+              ><TableHead className="text-right">Última Raspagem</TableHead
+            ></TableRow>
           </TableHeader>
           <TableBody>
             {[...Array(5)].map((_, i) => (
@@ -54,7 +54,7 @@ export function ProductSummaryTable({ summaries, isLoading, onInternalSkuChange,
                   <Skeleton className="h-3 w-1/2" />
                 </TableCell>
                 <TableCell><Skeleton className="h-8 w-24" /></TableCell>
-                <TableCell><Skeleton className="h-8 w-24" /></TableCell> {/* Skeleton para Marca */}
+                <TableCell><Skeleton className="h-8 w-24" /></TableCell>
                 <TableCell><Skeleton className="h-4 w-2/3" /></TableCell>
                 <TableCell className="text-center"><Skeleton className="h-4 w-8 mx-auto" /></TableCell>
                 <TableCell className="text-right"><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
@@ -76,17 +76,17 @@ export function ProductSummaryTable({ summaries, isLoading, onInternalSkuChange,
     <div className="rounded-md border">
       <Table>
         <TableHeader>
-          <TableRow>
-            <TableHead className="w-[80px] hidden sm:table-cell">Imagem</TableHead>
-            <TableHead>Produto (SKU)</TableHead>
-            <TableHead>SKU Interno</TableHead>
-            <TableHead>Marca</TableHead> {/* Nova Coluna */}
-            <TableHead>Marketplaces</TableHead>
-            <TableHead className="text-center">Sellers</TableHead>
-            <TableHead className="text-right">Menor Preço</TableHead>
-            <TableHead className="text-right">Maior Preço</TableHead>
-            <TableHead className="text-right">Última Raspagem</TableHead>
-          </TableRow>
+          <TableRow
+            ><TableHead className="w-[80px] hidden sm:table-cell">Imagem</TableHead
+            ><TableHead>Produto (SKU)</TableHead
+            ><TableHead>SKU Interno</TableHead
+            ><TableHead>Marca</TableHead
+            ><TableHead>Marketplaces</TableHead
+            ><TableHead className="text-center">Sellers</TableHead
+            ><TableHead className="text-right">Menor Preço</TableHead
+            ><TableHead className="text-right">Maior Preço</TableHead
+            ><TableHead className="text-right">Última Raspagem</TableHead
+          ></TableRow>
         </TableHeader>
         <TableBody>
           {summaries.map((summary) => (
@@ -113,7 +113,7 @@ export function ProductSummaryTable({ summaries, isLoading, onInternalSkuChange,
                   className="text-sm h-8 w-32"
                 />
               </TableCell>
-              <TableCell> {/* Nova Célula para Marca */}
+              <TableCell>
                 <Input
                   value={summary.marca || ''}
                   onChange={(e) => onBrandChange(summary.sku, e.target.value)}
@@ -126,7 +126,7 @@ export function ProductSummaryTable({ summaries, isLoading, onInternalSkuChange,
                   {summary.marketplaces.map(mp => (
                     <Badge key={mp} variant="secondary" className="text-xs">{mp}</Badge>
                   ))}
-                   {summary.marketplaces.length === 0 && <span className="text-xs text-muted-foreground">N/A</span>}
+                  {summary.marketplaces.length === 0 && <span className="text-xs text-muted-foreground">N/A</span>}
                 </div>
               </TableCell>
               <TableCell className="text-center">{summary.sellerCount}</TableCell>
