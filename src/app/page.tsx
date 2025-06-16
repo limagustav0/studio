@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Filter, BarChartBig, LayoutGrid, ChevronDown, Users, UploadCloud, Repeat } from 'lucide-react';
+import { Filter, BarChartBig, LayoutGrid, ChevronDown, Users, UploadCloud, Repeat, Building } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -32,8 +32,8 @@ interface InternalSkuMapping {
 
 const ALL_MARKETPLACES_OPTION_VALUE = "--all-marketplaces--";
 const DEFAULT_SELLER_FOCUS = "HAIRPRO";
-const INTERNAL_SKUS_LOCAL_STORAGE_KEY = 'priceWiseInternalSkusMap_v2'; // v2 for new structure
-const SEARCH_DEBOUNCE_DELAY = 500; // milliseconds
+const INTERNAL_SKUS_LOCAL_STORAGE_KEY = 'priceWiseInternalSkusMap_v2';
+const SEARCH_DEBOUNCE_DELAY = 500;
 
 export default function HomePage() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
@@ -45,6 +45,7 @@ export default function HomePage() {
 
   const [analysis_selectedMarketplace, setAnalysis_selectedMarketplace] = useState<string | null>(null);
   const [analysis_selectedInternalSkus, setAnalysis_selectedInternalSkus] = useState<string[]>([]);
+  const [analysis_selectedMarcas, setAnalysis_selectedMarcas] = useState<string[]>([]); // New state for selected brands
   const [uniqueSellersForAnalysis, setUniqueSellersForAnalysis] = useState<string[]>([]);
   const [buyboxWinners, setBuyboxWinners] = useState<BuyboxWinner[]>([]);
   const [analysis_selectedSellers, setAnalysis_selectedSellers] = useState<string[]>([]);
@@ -114,18 +115,33 @@ export default function HomePage() {
 
   const analysis_productsFilteredByMarketplace = useMemo(() => {
     let filtered = allProducts;
+
     if (analysis_selectedMarketplace && analysis_selectedMarketplace !== ALL_MARKETPLACES_OPTION_VALUE) {
       filtered = filtered.filter(p => p.marketplace === analysis_selectedMarketplace);
     }
+
     if (analysis_selectedInternalSkus.length > 0) {
-      const matchingPrincipalSkus = Object.entries(internalSkusMap)
-        .filter(([_, mapping]) => analysis_selectedInternalSkus.includes(mapping.internalSku))
+      const matchingPrincipalSkusByInternalSku = Object.entries(internalSkusMap)
+        .filter(([_, mapping]) => analysis_selectedInternalSkus.includes(mapping.internalSku || ''))
         .map(([principalSku, _]) => principalSku);
       
-      filtered = matchingPrincipalSkus.length > 0 ? filtered.filter(p => matchingPrincipalSkus.includes(p.sku)) : (analysis_selectedInternalSkus.length > 0 ? [] : filtered);
+      filtered = matchingPrincipalSkusByInternalSku.length > 0 
+        ? filtered.filter(p => matchingPrincipalSkusByInternalSku.includes(p.sku)) 
+        : (analysis_selectedInternalSkus.length > 0 ? [] : filtered);
     }
+
+    if (analysis_selectedMarcas.length > 0) {
+        const matchingPrincipalSkusByMarca = Object.entries(internalSkusMap)
+            .filter(([_, mapping]) => analysis_selectedMarcas.includes(mapping.marca || ''))
+            .map(([principalSku, _]) => principalSku);
+        
+        filtered = matchingPrincipalSkusByMarca.length > 0
+            ? filtered.filter(p => matchingPrincipalSkusByMarca.includes(p.sku))
+            : (analysis_selectedMarcas.length > 0 ? [] : filtered);
+    }
+
     return filtered;
-  }, [allProducts, analysis_selectedMarketplace, analysis_selectedInternalSkus, internalSkusMap]);
+  }, [allProducts, analysis_selectedMarketplace, analysis_selectedInternalSkus, analysis_selectedMarcas, internalSkusMap]);
 
   useEffect(() => {
     const currentMarketplaceSellers = getUniqueSellers(analysis_productsFilteredByMarketplace);
@@ -189,17 +205,22 @@ export default function HomePage() {
     return Array.from(new Set(Object.values(internalSkusMap).map(m => m.internalSku).filter(Boolean))).sort();
   }, [internalSkusMap]);
 
+  const uniqueMarcaValues = useMemo(() => { // New memo for unique brands
+    if (!internalSkusMap) return [];
+    return Array.from(new Set(Object.values(internalSkusMap).map(m => m.marca).filter(Boolean))).sort((a,b) => (a || '').localeCompare(b || ''));
+  }, [internalSkusMap]);
+
   const handleInternalSkuChange = (productSku: string, newInternalSku: string) => {
     setInternalSkusMap(prevMap => ({
       ...prevMap,
-      [productSku]: { ...prevMap[productSku], internalSku: newInternalSku },
+      [productSku]: { ...(prevMap[productSku] || { internalSku: '', marca: '' }), internalSku: newInternalSku },
     }));
   };
 
   const handleBrandChange = (productSku: string, newBrand: string) => {
     setInternalSkusMap(prevMap => ({
       ...prevMap,
-      [productSku]: { ...prevMap[productSku], marca: newBrand },
+      [productSku]: { ...(prevMap[productSku] || { internalSku: '', marca: '' }), marca: newBrand },
     }));
   };
 
@@ -216,7 +237,7 @@ export default function HomePage() {
     });
     toast({
       title: "Importação Concluída",
-      description: `${Object.keys(importedData).length} mapeamentos de SKU foram importados/atualizados.`,
+      description: `${Object.keys(importedData).length} mapeamentos de SKU/Marca foram importados/atualizados.`,
     });
   };
 
@@ -264,14 +285,15 @@ export default function HomePage() {
     return `${analysis_selectedSellers.slice(0, 2).join(', ')} + ${analysis_selectedSellers.length - 2} mais`;
   };
 
-  const getSelectedInternalSkusText = (selectedSkus: string[]) => {
-    if (selectedSkus.length === 0) return "Selecione SKU(s) Interno(s)...";
-    if (selectedSkus.length <= 2) return selectedSkus.join(', ');
-    return `${selectedSkus.slice(0, 2).join(', ')} + ${selectedSkus.length - 2} mais`;
+  const getSelectedItemsText = (selectedItems: string[], placeholder: string, itemTypeLabel: string) => {
+    if (selectedItems.length === 0) return placeholder;
+    if (selectedItems.length <= 2) return selectedItems.join(', ');
+    return `${selectedItems.slice(0, 2).join(', ')} + ${selectedItems.length - 2} mais`;
   };
   
   const analysis_selectedSellersSet = useMemo(() => new Set(analysis_selectedSellers), [analysis_selectedSellers]);
   const analysis_selectedInternalSkusSet = useMemo(() => new Set(analysis_selectedInternalSkus), [analysis_selectedInternalSkus]);
+  const analysis_selectedMarcasSet = useMemo(() => new Set(analysis_selectedMarcas), [analysis_selectedMarcas]); // New set for brands
 
   const handlePriceChangeTabMarketplaceChange = (value: string) => {
     setPriceChangeTab_selectedMarketplace(value === ALL_MARKETPLACES_OPTION_VALUE ? null : value);
@@ -285,7 +307,7 @@ export default function HomePage() {
     }
     if (priceChangeTab_selectedInternalSkus.length > 0) {
         const matchingPrincipalSkus = Object.entries(internalSkusMap)
-            .filter(([_, mapping]) => priceChangeTab_selectedInternalSkus.includes(mapping.internalSku))
+            .filter(([_, mapping]) => priceChangeTab_selectedInternalSkus.includes(mapping.internalSku || ''))
             .map(([principalSku, _]) => principalSku);
         filtered = matchingPrincipalSkus.length > 0 ? filtered.filter(p => matchingPrincipalSkus.includes(p.sku)) : (priceChangeTab_selectedInternalSkus.length > 0 ? [] : filtered);
     }
@@ -319,7 +341,7 @@ export default function HomePage() {
                     <CardDescription>Aplique filtros para refinar os dados exibidos nas seções de Análise de Desempenho e Vencedores de Buybox abaixo.</CardDescription>
                 </CardHeader>
                 <CardContent className="px-2 sm:px-6 space-y-4">
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4"> 
+                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4"> 
                     <div>
                         <Label htmlFor="analysis-marketplace-filter" className="text-sm font-medium">Filtrar por Marketplace</Label>
                         <Select value={analysis_selectedMarketplace || ALL_MARKETPLACES_OPTION_VALUE} onValueChange={handleAnalysisMarketplaceChange}>
@@ -335,7 +357,7 @@ export default function HomePage() {
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="outline" className="w-full justify-between mt-1">
-                                    <span className="truncate pr-2">{getSelectedInternalSkusText(analysis_selectedInternalSkus)}</span>
+                                    <span className="truncate pr-2">{getSelectedItemsText(analysis_selectedInternalSkus, "Selecione SKU(s) Interno(s)...", "SKU Interno")}</span>
                                     <ChevronDown className="h-4 w-4 opacity-50" />
                                 </Button>
                             </DropdownMenuTrigger>
@@ -348,6 +370,29 @@ export default function HomePage() {
                                 <DropdownMenuCheckboxItem key={`internal-sku-filter-${sku}`} checked={analysis_selectedInternalSkusSet.has(sku)}
                                     onCheckedChange={(checked) => setAnalysis_selectedInternalSkus(prev => checked ? [...prev, sku] : prev.filter(s => s !== sku))}
                                     onSelect={(e) => e.preventDefault()}>{sku}</DropdownMenuCheckboxItem>
+                                ))}
+                                </ScrollArea>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                    <div>
+                        <Label htmlFor="analysis-marca-filter" className="text-sm font-medium">Filtrar por Marca(s)</Label>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" className="w-full justify-between mt-1">
+                                    <span className="truncate pr-2">{getSelectedItemsText(analysis_selectedMarcas, "Selecione Marca(s)...", "Marca")}</span>
+                                    <ChevronDown className="h-4 w-4 opacity-50" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
+                                <DropdownMenuLabel>Marcas Disponíveis</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                {uniqueMarcaValues.length === 0 && (<p className="px-2 py-1.5 text-sm text-muted-foreground">Nenhuma marca mapeada.</p>)}
+                                <ScrollArea className="h-[200px]">
+                                {uniqueMarcaValues.map((marca) => (
+                                <DropdownMenuCheckboxItem key={`marca-filter-${marca}`} checked={analysis_selectedMarcasSet.has(marca)}
+                                    onCheckedChange={(checked) => setAnalysis_selectedMarcas(prev => checked ? [...prev, marca] : prev.filter(m => m !== marca))}
+                                    onSelect={(e) => e.preventDefault()}>{marca}</DropdownMenuCheckboxItem>
                                 ))}
                                 </ScrollArea>
                             </DropdownMenuContent>
@@ -396,8 +441,8 @@ export default function HomePage() {
             <section aria-labelledby="buybox-analysis-title">
               <h2 id="buybox-analysis-title" className="sr-only">Análise de Buybox</h2>
               <BuyboxWinnersDisplay buyboxWinners={buyboxWinners} isLoading={isLoading && buyboxWinners.length === 0 && analysis_productsFilteredByMarketplace.length > 0} />
-              {(isLoading && analysis_productsFilteredByMarketplace.length === 0 && allProducts.length > 0 && (analysis_selectedMarketplace !== null || analysis_selectedInternalSkus.length > 0)) && <p className="text-center text-muted-foreground">Carregando dados de buybox...</p>}
-              {(!isLoading && analysis_productsFilteredByMarketplace.length === 0 && allProducts.length > 0 && (analysis_selectedMarketplace !== null || analysis_selectedInternalSkus.length > 0)) &&
+              {(isLoading && analysis_productsFilteredByMarketplace.length === 0 && allProducts.length > 0 && (analysis_selectedMarketplace !== null || analysis_selectedInternalSkus.length > 0 || analysis_selectedMarcas.length > 0)) && <p className="text-center text-muted-foreground">Carregando dados de buybox...</p>}
+              {(!isLoading && analysis_productsFilteredByMarketplace.length === 0 && allProducts.length > 0 && (analysis_selectedMarketplace !== null || analysis_selectedInternalSkus.length > 0 || analysis_selectedMarcas.length > 0)) &&
                 <Card className="shadow-lg"><CardHeader><CardTitle>Vencedores de Buybox por Loja</CardTitle><CardDescription>Nenhum produto encontrado para os filtros selecionados.</CardDescription></CardHeader></Card>
               }
             </section>
@@ -455,7 +500,7 @@ export default function HomePage() {
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="outline" className="w-full justify-between mt-1">
-                                <span className="truncate pr-2">{getSelectedInternalSkusText(priceChangeTab_selectedInternalSkus)}</span>
+                                <span className="truncate pr-2">{getSelectedItemsText(priceChangeTab_selectedInternalSkus, "Selecione SKU(s) Interno(s)...", "SKU Interno")}</span>
                                 <ChevronDown className="h-4 w-4 opacity-50" />
                                 </Button>
                             </DropdownMenuTrigger>
