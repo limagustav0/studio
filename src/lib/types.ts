@@ -9,7 +9,7 @@ export interface Product {
   descricao: string;
   avaliacao: number; // e.g., 0-5
   imagem: string;
-  change_price?: number; // Updated: now a number representing count or sum
+  change_price?: number;
 }
 
 export interface PriceTrendProductInfo {
@@ -51,7 +51,8 @@ export interface ProductLosingBuyboxInfo {
   winningSeller: string;
   priceDifference: number;
   marketplace: string;
-  internalSku?: string; // Added internal SKU
+  internalSku?: string;
+  marca?: string; // Added marca
 }
 
 export interface ProductWinningBuyboxInfo {
@@ -65,7 +66,8 @@ export interface ProductWinningBuyboxInfo {
   priceDifferenceToNext?: number | null;
   nextCompetitorSellerName?: string | null; // Name of the seller with the next closest price
   marketplace: string;
-  internalSku?: string; // Added internal SKU
+  internalSku?: string;
+  marca?: string; // Added marca
 }
 
 export interface SellerAnalysisMetrics {
@@ -88,6 +90,7 @@ export interface UniqueProductSummary {
   minPrice: number;
   maxPrice: number;
   internalSku?: string;
+  marca?: string; // Added marca
 }
 
 // Types for PriceChangeSellersDisplay

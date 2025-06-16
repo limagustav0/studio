@@ -3,10 +3,11 @@ import type { SellerAnalysisMetrics, ProductLosingBuyboxInfo, ProductWinningBuyb
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TrendingUp, TrendingDown, ListChecks, PackageSearch, AlertTriangle, Info, CheckCircle2, Clock, Users } from 'lucide-react';
+import { TrendingUp, TrendingDown, ListChecks, PackageSearch, AlertTriangle, Info, CheckCircle2, Clock, Users, Landmark } from 'lucide-react';
 import Image from 'next/image';
 import { format as formatDate, parseISO, compareDesc } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Badge } from '@/components/ui/badge';
 
 interface SellerPerformanceDashboardProps {
   performanceMetricsList: SellerAnalysisMetrics[];
@@ -63,24 +64,14 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
             {[...Array(3)].map((_, i) => (
               <Card key={`skel-metric-${i}`}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <Skeleton className="h-5 w-2/3" />
-                  <Skeleton className="h-6 w-6 rounded-full" />
+                  <Skeleton className="h-5 w-2/3" /><Skeleton className="h-6 w-6 rounded-full" />
                 </CardHeader>
-                <CardContent>
-                  <Skeleton className="h-8 w-1/3 mb-1" />
-                  <Skeleton className="h-4 w-full" />
-                </CardContent>
+                <CardContent><Skeleton className="h-8 w-1/3 mb-1" /><Skeleton className="h-4 w-full" /></CardContent>
               </Card>
             ))}
           </div>
-          <div>
-            <Skeleton className="h-6 w-1/2 mb-4" />
-            <Skeleton className="h-40 w-full" />
-          </div>
-           <div>
-            <Skeleton className="h-6 w-1/2 mb-4 mt-6" />
-            <Skeleton className="h-40 w-full" />
-          </div>
+          <div><Skeleton className="h-6 w-1/2 mb-4" /><Skeleton className="h-40 w-full" /></div>
+          <div><Skeleton className="h-6 w-1/2 mb-4 mt-6" /><Skeleton className="h-40 w-full" /></div>
         </CardContent>
       </Card>
     );
@@ -95,8 +86,7 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
         </CardHeader>
          <CardContent>
             <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
-                <Info className="h-12 w-12 mb-4"/>
-                <p className="text-center">Nenhum vendedor selecionado.</p>
+                <Info className="h-12 w-12 mb-4"/><p className="text-center">Nenhum vendedor selecionado.</p>
             </div>
         </CardContent>
       </Card>
@@ -113,14 +103,13 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
          <CardContent>
             <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
                 <AlertTriangle className="h-12 w-12 mb-4 text-destructive"/>
-                <p className="text-center">Sem dados para exibir para o(s) vendedor(es) selecionado(s): {selectedSellerNames.join(', ')}.</p>
+                <p className="text-center">Sem dados para exibir para: {selectedSellerNames.join(', ')}.</p>
             </div>
         </CardContent>
       </Card>
     );
   }
 
-  // Consolidate metrics
   let consolidatedTotalProductsListed = 0;
   const winningSkus = new Set<string>();
   const losingSkus = new Set<string>();
@@ -133,19 +122,11 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
     consolidatedTotalProductsListed += metrics.totalProductsListed;
     metrics.productsWinningBuybox.forEach(p => winningSkus.add(p.sku));
     metrics.productsLosingBuybox.forEach(p => losingSkus.add(p.sku));
-
-    if (metrics.lastUpdateTime) {
-      if (!latestLastUpdateTime || compareDesc(parseISO(metrics.lastUpdateTime), parseISO(latestLastUpdateTime)) < 0) {
-        latestLastUpdateTime = metrics.lastUpdateTime;
-      }
+    if (metrics.lastUpdateTime && (!latestLastUpdateTime || compareDesc(parseISO(metrics.lastUpdateTime), parseISO(latestLastUpdateTime)) < 0)) {
+      latestLastUpdateTime = metrics.lastUpdateTime;
     }
-
-    metrics.productsLosingBuybox.forEach(p => {
-      allLosingProducts.push({ ...p, sellerName: metrics.sellerName });
-    });
-    metrics.productsWinningBuybox.forEach(p => {
-      allWinningProducts.push({ ...p, sellerName: metrics.sellerName });
-    });
+    metrics.productsLosingBuybox.forEach(p => allLosingProducts.push({ ...p, sellerName: metrics.sellerName }));
+    metrics.productsWinningBuybox.forEach(p => allWinningProducts.push({ ...p, sellerName: metrics.sellerName }));
   });
 
   const consolidatedBuyboxesWon = winningSkus.size;
@@ -154,136 +135,52 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
   allLosingProducts.sort((a,b) => b.priceDifference - a.priceDifference || a.descricao.localeCompare(b.descricao));
   allWinningProducts.sort((a,b) => (a.priceDifferenceToNext ?? Infinity) - (b.priceDifferenceToNext ?? Infinity) || a.descricao.localeCompare(b.descricao));
 
-
   if (performanceMetricsList.every(m => m.totalProductsListed === 0)) {
       return (
         <Card className="shadow-lg w-full">
             <CardHeader>
             <CardTitle className="flex items-center"><PackageSearch className="mr-2 h-5 w-5 text-primary" />Análise Consolidada: {selectedSellerNames.join(', ')}</CardTitle>
-            <CardDescription>Nenhum dos vendedores selecionados possui produtos listados nos dados atuais (considerando o filtro de marketplace).</CardDescription>
-            {latestLastUpdateTime && (
-                <p className="text-xs text-muted-foreground mt-1 flex items-center">
-                <Clock className="mr-1.5 h-3 w-3" />
-                Dados atualizados em: {formatLastUpdateTime(latestLastUpdateTime)}
-                </p>
-            )}
+            <CardDescription>Nenhum produto listado para os vendedores selecionados (considerando filtros).</CardDescription>
+            {latestLastUpdateTime && (<p className="text-xs text-muted-foreground mt-1 flex items-center"><Clock className="mr-1.5 h-3 w-3" />Dados atualizados em: {formatLastUpdateTime(latestLastUpdateTime)}</p>)}
             </CardHeader>
-            <CardContent>
-                <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
-                    <Info className="h-12 w-12 mb-4"/>
-                    <p className="text-center">Sem produtos listados para os vendedores selecionados.</p>
-                </div>
-            </CardContent>
+            <CardContent><div className="flex flex-col items-center justify-center py-10 text-muted-foreground"><Info className="h-12 w-12 mb-4"/><p className="text-center">Sem produtos listados.</p></div></CardContent>
         </Card>
         );
   }
 
-
   return (
     <Card className="shadow-lg w-full">
       <CardHeader>
-        <CardTitle className="flex items-center">
-          <Users className="mr-2 h-5 w-5 text-primary" />
-          Análise Consolidada: {selectedSellerNames.join(', ')}
-        </CardTitle>
+        <CardTitle className="flex items-center"><Users className="mr-2 h-5 w-5 text-primary" />Análise Consolidada: {selectedSellerNames.join(', ')}</CardTitle>
         <CardDescription>Métricas combinadas e detalhamento de produtos para os vendedores selecionados.</CardDescription>
-        {latestLastUpdateTime && (
-          <p className="text-xs text-muted-foreground pt-1 flex items-center">
-            <Clock className="mr-1.5 h-3 w-3" />
-            Dados (mais recentes entre os selecionados) atualizados em: {formatLastUpdateTime(latestLastUpdateTime)}
-          </p>
-        )}
+        {latestLastUpdateTime && (<p className="text-xs text-muted-foreground pt-1 flex items-center"><Clock className="mr-1.5 h-3 w-3" />Dados (mais recentes) atualizados em: {formatLastUpdateTime(latestLastUpdateTime)}</p>)}
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total de Produtos Listados</CardTitle>
-              <ListChecks className="h-5 w-5 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{consolidatedTotalProductsListed}</div>
-              <p className="text-xs text-muted-foreground">Soma de produtos ofertados pelos vendedores selecionados</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Buyboxes Ganhos (SKUs Únicos)</CardTitle>
-              <TrendingUp className="h-5 w-5 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{consolidatedBuyboxesWon}</div>
-              <p className="text-xs text-muted-foreground">SKUs onde pelo menos um vendedor selecionado tem o menor preço</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Buyboxes Perdidos (SKUs Únicos)</CardTitle>
-              <TrendingDown className="h-5 w-5 text-red-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{consolidatedBuyboxesLost}</div>
-              <p className="text-xs text-muted-foreground">SKUs onde um vendedor selecionado perde para outro (fora do grupo ou dentro)</p>
-            </CardContent>
-          </Card>
+          <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Produtos Listados</CardTitle><ListChecks className="h-5 w-5 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{consolidatedTotalProductsListed}</div><p className="text-xs text-muted-foreground">Soma de produtos ofertados</p></CardContent></Card>
+          <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Buyboxes Ganhos (SKUs)</CardTitle><TrendingUp className="h-5 w-5 text-green-600" /></CardHeader><CardContent><div className="text-2xl font-bold">{consolidatedBuyboxesWon}</div><p className="text-xs text-muted-foreground">SKUs com menor preço</p></CardContent></Card>
+          <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Buyboxes Perdidos (SKUs)</CardTitle><TrendingDown className="h-5 w-5 text-red-600" /></CardHeader><CardContent><div className="text-2xl font-bold">{consolidatedBuyboxesLost}</div><p className="text-xs text-muted-foreground">SKUs onde perde para outro</p></CardContent></Card>
         </div>
 
         {allLosingProducts.length > 0 && (
           <div>
-            <h3 className="text-lg font-semibold mb-3 flex items-center">
-              <AlertTriangle className="mr-2 h-5 w-5 text-destructive" />
-              Produtos Perdendo Buybox (Considerando Vendedores Selecionados)
-            </h3>
+            <h3 className="text-lg font-semibold mb-3 flex items-center"><AlertTriangle className="mr-2 h-5 w-5 text-destructive" />Produtos Perdendo Buybox</h3>
             <div className="overflow-x-auto rounded-md border">
               <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[60px] hidden sm:table-cell">Imagem</TableHead>
-                    <TableHead>Produto (SKU)</TableHead>
-                    <TableHead>Vendedor (Marketplace)</TableHead>
-                    <TableHead className="text-right">Preços</TableHead>
-                    <TableHead>Vencedor (Diferença)</TableHead>
-                    <TableHead className="text-right">Ultima raspagem</TableHead>
-                  </TableRow>
-                </TableHeader>
+                <TableHeader><TableRow><TableHead className="w-[60px] hidden sm:table-cell">Img</TableHead><TableHead>Produto (SKU/Marca)</TableHead><TableHead>Vendedor (Mktplace)</TableHead><TableHead className="text-right">Preços</TableHead><TableHead>Vencedor (Dif.)</TableHead><TableHead className="text-right">Raspagem</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {allLosingProducts.map((item, idx) => (
                     <TableRow key={`losing-${item.sku}-${item.sellerName}-${item.marketplace}-${idx}`}>
-                      <TableCell className="hidden sm:table-cell">
-                        <Image
-                          src={item.imagem || "https://placehold.co/50x50.png"}
-                          alt={item.descricao}
-                          width={50}
-                          height={50}
-                          className="rounded"
-                          data-ai-hint="product item small"
-                        />
-                      </TableCell>
+                      <TableCell className="hidden sm:table-cell"><Image src={item.imagem || "https://placehold.co/50x50.png"} alt={item.descricao} width={50} height={50} className="rounded" data-ai-hint="product item small"/></TableCell>
                       <TableCell>
                         <div className="font-medium max-w-xs truncate" title={item.descricao}>{item.descricao}</div>
                         <div className="text-xs text-muted-foreground">SKU: {item.sku}</div>
-                        {item.internalSku && (
-                          <div className="text-xs text-muted-foreground mt-0.5">SKU Interno: {item.internalSku}</div>
-                        )}
+                        {item.internalSku && (<div className="text-xs text-muted-foreground mt-0.5">Interno: {item.internalSku}</div>)}
+                        {item.marca && (<Badge variant="outline" className="text-xs mt-1">{item.marca}</Badge>)}
                       </TableCell>
-                      <TableCell>
-                        <div className="font-medium max-w-xs truncate" title={item.sellerName}>{item.sellerName}</div>
-                        <div className="text-xs text-muted-foreground max-w-xs truncate" title={item.marketplace}>{item.marketplace}</div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div>
-                          <span className="text-xs text-muted-foreground mr-1">Vencedor:</span>
-                          <span className="font-semibold text-green-600">R$ {item.winningPrice.toFixed(2)}</span>
-                        </div>
-                        <div>
-                          <span className="text-xs text-muted-foreground mr-1">Seu:</span>
-                          <span className="font-semibold text-blue-600">R$ {item.sellerPrice.toFixed(2)}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                         <div className="font-medium max-w-[150px] truncate" title={item.winningSeller}>{item.winningSeller}</div>
-                         <div className="text-xs text-red-600">Perdendo por R$ {item.priceDifference.toFixed(2)}</div>
-                      </TableCell>
+                      <TableCell><div className="font-medium max-w-xs truncate" title={item.sellerName}>{item.sellerName}</div><div className="text-xs text-muted-foreground max-w-xs truncate" title={item.marketplace}>{item.marketplace}</div></TableCell>
+                      <TableCell className="text-right"><div><span className="text-xs text-muted-foreground mr-1">Vencedor:</span><span className="font-semibold text-green-600">R$ {item.winningPrice.toFixed(2)}</span></div><div><span className="text-xs text-muted-foreground mr-1">Seu:</span><span className="font-semibold text-blue-600">R$ {item.sellerPrice.toFixed(2)}</span></div></TableCell>
+                      <TableCell><div className="font-medium max-w-[150px] truncate" title={item.winningSeller}>{item.winningSeller}</div><div className="text-xs text-red-600">Perdendo por R$ {item.priceDifference.toFixed(2)}</div></TableCell>
                       <TableCell className="text-right text-xs text-muted-foreground">{formatTableCellDateTime(item.data_hora)}</TableCell>
                     </TableRow>
                   ))}
@@ -292,71 +189,30 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
             </div>
           </div>
         )}
-        {allLosingProducts.length === 0 && consolidatedBuyboxesLost > 0 && (
-             <p className="text-sm text-muted-foreground mt-4">Informações detalhadas sobre produtos perdendo buybox não disponíveis ou erro no cálculo.</p>
-        )}
-         {consolidatedBuyboxesLost === 0 && consolidatedTotalProductsListed > 0 && (
-             <p className="text-sm text-green-600 font-medium mt-4">Ótimo! Nenhum dos vendedores selecionados está perdendo buyboxes para os produtos que listam.</p>
-        )}
-
+        {allLosingProducts.length === 0 && consolidatedBuyboxesLost > 0 && (<p className="text-sm text-muted-foreground mt-4">Detalhes de produtos perdendo buybox não disponíveis.</p>)}
+        {consolidatedBuyboxesLost === 0 && consolidatedTotalProductsListed > 0 && (<p className="text-sm text-green-600 font-medium mt-4">Nenhum vendedor selecionado está perdendo buyboxes!</p>)}
 
         <div className="mt-8 pt-6 border-t">
-            <h3 className="text-lg font-semibold mb-3 flex items-center">
-              <CheckCircle2 className="mr-2 h-5 w-5 text-green-600" />
-              Produtos Ganhando Buybox (Considerando Vendedores Selecionados)
-            </h3>
+            <h3 className="text-lg font-semibold mb-3 flex items-center"><CheckCircle2 className="mr-2 h-5 w-5 text-green-600" />Produtos Ganhando Buybox</h3>
             {allWinningProducts.length > 0 ? (
               <div className="overflow-x-auto rounded-md border">
                 <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[60px] hidden sm:table-cell">Imagem</TableHead>
-                      <TableHead>Produto (SKU)</TableHead>
-                      <TableHead>Vendedor (Marketplace)</TableHead>
-                      <TableHead className="text-right">Seu Preço (Margem)</TableHead>
-                      <TableHead>Próximo Concorrente (Preço)</TableHead>
-                      <TableHead className="text-right">Ultima raspagem</TableHead>
-                    </TableRow>
-                  </TableHeader>
+                  <TableHeader><TableRow><TableHead className="w-[60px] hidden sm:table-cell">Img</TableHead><TableHead>Produto (SKU/Marca)</TableHead><TableHead>Vendedor (Mktplace)</TableHead><TableHead className="text-right">Seu Preço (Margem)</TableHead><TableHead>Próx. Concorrente</TableHead><TableHead className="text-right">Raspagem</TableHead></TableRow></TableHeader>
                   <TableBody>
                     {allWinningProducts.map((item, idx) => (
                       <TableRow key={`winning-${item.sku}-${item.sellerName}-${item.marketplace}-${idx}`}>
-                        <TableCell className="hidden sm:table-cell">
-                          <Image
-                            src={item.imagem || "https://placehold.co/50x50.png"}
-                            alt={item.descricao}
-                            width={50}
-                            height={50}
-                            className="rounded"
-                            data-ai-hint="product item small"
-                          />
-                        </TableCell>
+                        <TableCell className="hidden sm:table-cell"><Image src={item.imagem || "https://placehold.co/50x50.png"} alt={item.descricao} width={50} height={50} className="rounded" data-ai-hint="product item small"/></TableCell>
                         <TableCell>
                           <div className="font-medium max-w-xs truncate" title={item.descricao}>{item.descricao}</div>
                           <div className="text-xs text-muted-foreground">SKU: {item.sku}</div>
-                          {item.internalSku && (
-                            <div className="text-xs text-muted-foreground mt-0.5">SKU Interno: {item.internalSku}</div>
-                          )}
+                          {item.internalSku && (<div className="text-xs text-muted-foreground mt-0.5">Interno: {item.internalSku}</div>)}
+                          {item.marca && (<Badge variant="outline" className="text-xs mt-1">{item.marca}</Badge>)}
                         </TableCell>
+                        <TableCell><div className="font-medium max-w-xs truncate" title={item.sellerName}>{item.sellerName}</div><div className="text-xs text-muted-foreground max-w-xs truncate" title={item.marketplace}>{item.marketplace}</div></TableCell>
+                        <TableCell className="text-right"><div className="font-semibold text-green-600">R$ {item.sellerPrice.toFixed(2)}</div><div className="text-xs">{formatDifference(item.priceDifferenceToNext)}</div></TableCell>
                         <TableCell>
-                          <div className="font-medium max-w-xs truncate" title={item.sellerName}>{item.sellerName}</div>
-                          <div className="text-xs text-muted-foreground max-w-xs truncate" title={item.marketplace}>{item.marketplace}</div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="font-semibold text-green-600">R$ {item.sellerPrice.toFixed(2)}</div>
-                          <div className="text-xs">{formatDifference(item.priceDifferenceToNext)}</div>
-                        </TableCell>
-                        <TableCell>
-                           <div className="max-w-[150px] truncate" title={item.nextCompetitorSellerName || undefined}>
-                                {item.priceDifferenceToNext !== null && item.priceDifferenceToNext !== undefined 
-                                    ? item.nextCompetitorSellerName || 'N/A'
-                                    : 'Sem concorrente direto'}
-                           </div>
-                           {(item.priceDifferenceToNext !== null && item.priceDifferenceToNext !== undefined && item.nextCompetitorSellerName && (item.sellerPrice + item.priceDifferenceToNext) > 0) && (
-                            <div className="text-xs text-muted-foreground">
-                                R$ {(item.sellerPrice + item.priceDifferenceToNext).toFixed(2)}
-                            </div>
-                           )}
+                           <div className="max-w-[150px] truncate" title={item.nextCompetitorSellerName || undefined}>{item.priceDifferenceToNext !== null && item.priceDifferenceToNext !== undefined ? item.nextCompetitorSellerName || 'N/A' : 'Sem concorrente'}</div>
+                           {(item.priceDifferenceToNext !== null && item.priceDifferenceToNext !== undefined && item.nextCompetitorSellerName && (item.sellerPrice + item.priceDifferenceToNext) > 0) && (<div className="text-xs text-muted-foreground">R$ {(item.sellerPrice + item.priceDifferenceToNext).toFixed(2)}</div>)}
                         </TableCell>
                         <TableCell className="text-right text-xs text-muted-foreground">{formatTableCellDateTime(item.data_hora)}</TableCell>
                       </TableRow>
@@ -365,13 +221,9 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
                 </Table>
               </div>
             ) : consolidatedBuyboxesWon > 0 ? (
-              <p className="text-sm text-muted-foreground mt-2">
-                Pelo menos um vendedor selecionado está ganhando {consolidatedBuyboxesWon} buybox(es), mas os detalhes dos produtos não estão disponíveis (possivelmente ganhos sem concorrência direta ou erro no processamento).
-              </p>
+              <p className="text-sm text-muted-foreground mt-2">Ganhando {consolidatedBuyboxesWon} buybox(es), mas detalhes não disponíveis (sem concorrência direta ou erro).</p>
             ) : (
-              <p className="text-sm text-red-600 font-medium mt-2">
-                Nenhum dos vendedores selecionados está ganhando buyboxes atualmente.
-              </p>
+              <p className="text-sm text-red-600 font-medium mt-2">Nenhum vendedor selecionado ganhando buyboxes.</p>
             )}
         </div>
       </CardContent>
