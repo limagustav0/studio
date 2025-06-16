@@ -13,13 +13,13 @@ import type { Product } from '@/lib/types';
 interface SkuImportTabProps {
   onImport: (importedData: Record<string, { internalSku: string; marca: string }>) => void;
   allProducts: Product[];
-  internalSkusMap: Record<string, { internalSku: string; marca?: string }>;
+  internalSkusMap: Record<string, { internalSku?: string; marca?: string }>; // Updated type
 }
 
 const EXPECTED_PRIMARY_SKU_COLUMN = "SKU_Principal";
 const EXPECTED_INTERNAL_SKU_COLUMN_UNDERSCORE = "SKU_Interno";
 const EXPECTED_INTERNAL_SKU_COLUMN_SPACE = "SKU Interno";
-const EXPECTED_BRAND_COLUMN = "Marca"; // Nova coluna
+const EXPECTED_BRAND_COLUMN = "Marca";
 
 export function SkuImportTab({ onImport, allProducts, internalSkusMap }: SkuImportTabProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -64,6 +64,50 @@ export function SkuImportTab({ onImport, allProducts, internalSkusMap }: SkuImpo
     }
     
     const worksheet = XLSX.utils.json_to_sheet(dataForSheet);
+
+    // Ensure SKU_Principal, SKU_Interno, and Marca are treated as text
+    const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:C1'); // Adjust range to C1 for Marca
+    for (let R = range.s.r + 1; R <= range.e.r; ++R) { // Start from row 1 (data row)
+      // Column A: SKU_Principal
+      const cellAddressA = XLSX.utils.encode_cell({c: 0, r: R}); 
+      if (worksheet[cellAddressA]) {
+        worksheet[cellAddressA].t = 's'; // Set type to string
+        worksheet[cellAddressA].v = String(worksheet[cellAddressA].v); // Ensure value is string
+      } else { // If cell doesn't exist (e.g. empty value from map), create it as an empty string cell
+        worksheet[cellAddressA] = { t: 's', v: "" };
+      }
+
+      // Column B: SKU_Interno
+      const cellAddressB = XLSX.utils.encode_cell({c: 1, r: R});
+      if (worksheet[cellAddressB]) {
+        worksheet[cellAddressB].t = 's';
+        worksheet[cellAddressB].v = String(worksheet[cellAddressB].v);
+      } else {
+         worksheet[cellAddressB] = { t: 's', v: "" };
+      }
+
+      // Column C: Marca
+      const cellAddressC = XLSX.utils.encode_cell({c: 2, r: R});
+      if (worksheet[cellAddressC]) {
+        worksheet[cellAddressC].t = 's';
+        worksheet[cellAddressC].v = String(worksheet[cellAddressC].v);
+      } else {
+         worksheet[cellAddressC] = { t: 's', v: "" };
+      }
+    }
+    // Ensure headers are also strings if they weren't already
+    if (range.s.r === 0) { // Check if headers are in the first row
+        const headerCells = [
+            XLSX.utils.encode_cell({c: 0, r: 0}), // SKU_Principal header
+            XLSX.utils.encode_cell({c: 1, r: 0}), // SKU_Interno header
+            XLSX.utils.encode_cell({c: 2, r: 0})  // Marca header
+        ];
+        headerCells.forEach(hc => {
+            if (worksheet[hc]) worksheet[hc].t = 's';
+        });
+    }
+
+
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "SKUs_Marcas"); 
     
@@ -95,7 +139,7 @@ export function SkuImportTab({ onImport, allProducts, internalSkusMap }: SkuImpo
         const workbook = XLSX.read(binaryStr, { type: 'binary' });
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
-        const data = XLSX.utils.sheet_to_json<any>(worksheet);
+        const data = XLSX.utils.sheet_to_json<any>(worksheet, { defval: "" }); // Use defval to ensure all cells are read
 
         const importedData: Record<string, { internalSku: string; marca: string }> = {};
         let importedCount = 0;
@@ -109,39 +153,51 @@ export function SkuImportTab({ onImport, allProducts, internalSkusMap }: SkuImpo
         }
 
         const headerKeys = Object.keys(data[0]);
-        const getTrimmedKey = (expectedNames: string[]) => headerKeys.find(key => expectedNames.includes(key.trim()));
-
+        const getTrimmedKey = (expectedNames: string[]) => headerKeys.find(key => expectedNames.map(n => n.toLowerCase()).includes(key.trim().toLowerCase()));
+        
         const actualPrimarySkuColumnName = getTrimmedKey([EXPECTED_PRIMARY_SKU_COLUMN]);
         const actualInternalSkuColumnName = getTrimmedKey([EXPECTED_INTERNAL_SKU_COLUMN_UNDERSCORE, EXPECTED_INTERNAL_SKU_COLUMN_SPACE]);
         const actualBrandColumnName = getTrimmedKey([EXPECTED_BRAND_COLUMN]);
 
-        if (!actualPrimarySkuColumnName || !actualInternalSkuColumnName || !actualBrandColumnName) {
-          toast({ variant: "destructive", title: "Colunas Não Encontradas", description: columnErrorDesc });
+        if (!actualPrimarySkuColumnName) {
+          toast({ variant: "destructive", title: "Coluna Principal Não Encontrada", description: `Coluna "${EXPECTED_PRIMARY_SKU_COLUMN}" não encontrada. ${columnErrorDesc}` });
+          setIsProcessing(false); return;
+        }
+         if (!actualInternalSkuColumnName) {
+          toast({ variant: "destructive", title: "Coluna Interna Não Encontrada", description: `Coluna "${EXPECTED_INTERNAL_SKU_COLUMN_UNDERSCORE}" ou "${EXPECTED_INTERNAL_SKU_COLUMN_SPACE}" não encontrada. ${columnErrorDesc}` });
+          setIsProcessing(false); return;
+        }
+         if (!actualBrandColumnName) {
+          toast({ variant: "destructive", title: "Coluna de Marca Não Encontrada", description: `Coluna "${EXPECTED_BRAND_COLUMN}" não encontrada. ${columnErrorDesc}` });
           setIsProcessing(false); return;
         }
 
-        data.forEach(row => {
-          const principalSku = row[actualPrimarySkuColumnName!];
-          const internalSku = row[actualInternalSkuColumnName!];
-          const marca = row[actualBrandColumnName!];
 
-          if (principalSku && (typeof principalSku === 'string' || typeof principalSku === 'number') &&
-              internalSku && (typeof internalSku === 'string' || typeof internalSku === 'number') &&
-              marca && (typeof marca === 'string' || typeof marca === 'number') ) { // Marca é obrigatória
-            importedData[String(principalSku).trim()] = { 
-              internalSku: String(internalSku).trim(), 
-              marca: String(marca).trim() 
-            };
+        data.forEach(row => {
+          const principalSku = row[actualPrimarySkuColumnName!] !== undefined ? String(row[actualPrimarySkuColumnName!]).trim() : "";
+          const internalSku = row[actualInternalSkuColumnName!] !== undefined ? String(row[actualInternalSkuColumnName!]).trim() : "";
+          const marca = row[actualBrandColumnName!] !== undefined ? String(row[actualBrandColumnName!]).trim() : "";
+
+          if (principalSku && internalSku && marca ) { // SKU Principal, SKU Interno e Marca são obrigatórios
+            importedData[principalSku] = { internalSku, marca };
             importedCount++;
-          } else {
+          } else if (principalSku || internalSku || marca) { // If any field is present but not all, count as skipped
             skippedCount++;
           }
+          // If all fields are empty for a row, it's just an empty row, don't count as skipped.
         });
 
-        if (importedCount > 0) onImport(importedData);
-        else toast({ variant: "destructive", title: "Nenhum SKU/Marca Válido Encontrado", description: `Verifique os dados nas colunas esperadas.` });
+        if (importedCount > 0) {
+            onImport(importedData);
+            // Toast for successful import already handled in page.tsx by onImport callback
+        } else {
+            toast({ variant: "destructive", title: "Nenhum SKU/Marca Válido Encontrado", description: `Nenhuma linha com SKU Principal, SKU Interno e Marca preenchidos foi encontrada. Verifique os dados.` });
+        }
         
-        if (skippedCount > 0) toast({ variant: "default", title: "Linhas Ignoradas", description: `${skippedCount} linha(s) ignorada(s) por dados ausentes/inválidos (SKU Principal, SKU Interno e Marca são obrigatórios).` });
+        if (skippedCount > 0) {
+             toast({ variant: "default", title: "Linhas Ignoradas", description: `${skippedCount} linha(s) ignorada(s) por dados ausentes (SKU Principal, SKU Interno e Marca são obrigatórios).` });
+        }
+
 
       } catch (error) {
         console.error("Erro ao processar o arquivo XLSX:", error);
@@ -209,8 +265,8 @@ export function SkuImportTab({ onImport, allProducts, internalSkusMap }: SkuImpo
                 <CardContent className="text-sm text-muted-foreground space-y-1">
                     <p>1. Formato: XLSX ou XLS.</p>
                     <p>2. Primeira planilha será utilizada.</p>
-                    <p>3. Cabeçalhos obrigatórios: <strong>{EXPECTED_PRIMARY_SKU_COLUMN}</strong>, (<strong>{EXPECTED_INTERNAL_SKU_COLUMN_UNDERSCORE}</strong> ou <strong>{EXPECTED_INTERNAL_SKU_COLUMN_SPACE}</strong>), e <strong>{EXPECTED_BRAND_COLUMN}</strong>. Sem espaços extras.</p>
-                    <p>4. Todos os três campos (SKU Principal, SKU Interno, Marca) são obrigatórios por linha para importação.</p>
+                    <p>3. Cabeçalhos obrigatórios: <strong>{EXPECTED_PRIMARY_SKU_COLUMN}</strong>, (<strong>{EXPECTED_INTERNAL_SKU_COLUMN_UNDERSCORE}</strong> ou <strong>{EXPECTED_INTERNAL_SKU_COLUMN_SPACE}</strong>), e <strong>{EXPECTED_BRAND_COLUMN}</strong>. Sem espaços extras e diferencia maiúsculas de minúsculas.</p>
+                    <p>4. Todos os três campos (SKU Principal, SKU Interno, Marca) são obrigatórios por linha para importação. Linhas incompletas serão ignoradas.</p>
                     <p>5. SKUs principais duplicados no arquivo? O último encontrado prevalecerá.</p>
                     <p>6. A importação mesclará/atualizará os dados existentes.</p>
                     <p>7. "Baixar Modelo" fornece um arquivo pré-formatado (e pré-preenchido com SKUs e suas marcas/SKUs internos já definidos, se houver).</p>
@@ -221,3 +277,4 @@ export function SkuImportTab({ onImport, allProducts, internalSkusMap }: SkuImpo
     </Card>
   );
 }
+
