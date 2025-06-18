@@ -70,14 +70,25 @@ export interface ProductWinningBuyboxInfo {
   marca?: string;
 }
 
+export interface BrandBuyboxWinSummary {
+  marca: string;
+  wins: number; // Total unique SKUs this brand is winning (for the selected seller)
+}
+
+export interface MarketplaceBuyboxWinSummary {
+  marketplace: string;
+  wins: number; // Total unique SKUs won in this marketplace (by the selected seller)
+}
+
 export interface SellerAnalysisMetrics {
   sellerName: string;
   totalProductsListed: number;
-  buyboxesWon: number;
-  buyboxesLost: number;
+  buyboxesWon: number; // Total unique SKUs this seller is winning
+  buyboxesLost: number; // Total unique SKUs this seller is losing
   productsLosingBuybox: ProductLosingBuyboxInfo[];
   productsWinningBuybox: ProductWinningBuyboxInfo[];
-  // marketplaceWins: SellerMarketplaceWinSummary[]; // Removed per user request to consolidate marketplace chart elsewhere
+  brandBuyboxWins: BrandBuyboxWinSummary[]; // Wins by brand for this seller
+  marketplaceBuyboxWins: MarketplaceBuyboxWinSummary[]; // Wins by marketplace for this seller
   lastUpdateTime: string | null;
 }
 
@@ -117,18 +128,7 @@ export interface AggregatedProductChangeDetail {
   latestChangeDate: string | null; // Most recent data_hora for this change
 }
 
-export interface BrandBuyboxWinSummary {
-  marca: string;
-  wins: number; // Total unique SKUs this brand is winning
-}
-
-export interface MarketplaceBuyboxWinSummary {
-  marketplace: string;
-  wins: number; // Total unique SKUs won in this marketplace overall
-}
-
 export interface InternalSkuMapping {
   internalSku?: string;
   marca?: string;
 }
-

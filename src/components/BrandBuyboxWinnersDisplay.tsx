@@ -11,11 +11,12 @@ interface BrandBuyboxWinnersDisplayProps {
   brandBuyboxWins: BrandBuyboxWinSummary[];
   marketplaceBuyboxWins: MarketplaceBuyboxWinSummary[];
   isLoading: boolean;
+  context?: 'seller' | 'global'; // To adjust titles if needed
 }
 
 const TOP_N_BRANDS_PIE = 5;
 const TOP_N_BRANDS_BAR = 10;
-const TOP_N_MARKETPLACES_BAR = 5;
+const TOP_N_MARKETPLACES_BAR = 3; // Changed to Top 3
 
 const COLORS_PIE = [
   "hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))",
@@ -24,7 +25,9 @@ const COLORS_PIE = [
   "hsl(330 90% 65%)", "hsl(270 80% 60%)", "hsl(90 75% 50%)" 
 ];
 
-export function BrandBuyboxWinnersDisplay({ brandBuyboxWins, marketplaceBuyboxWins, isLoading }: BrandBuyboxWinnersDisplayProps) {
+const MARKETPLACE_CHART_COLOR = "hsl(var(--chart-1))"; // Using chart-1 for ciano
+
+export function BrandBuyboxWinnersDisplay({ brandBuyboxWins, marketplaceBuyboxWins, isLoading, context = 'global' }: BrandBuyboxWinnersDisplayProps) {
   
   const processedPieData = React.useMemo(() => {
     if (!brandBuyboxWins || brandBuyboxWins.length === 0) return [];
@@ -67,15 +70,25 @@ export function BrandBuyboxWinnersDisplay({ brandBuyboxWins, marketplaceBuyboxWi
   }, [marketplaceBuyboxWins]);
 
   const marketplaceBarChartConfig = {
-    wins: { label: "Ganhos de Buybox (Marketplace)", color: "hsl(var(--chart-2))" },
+    wins: { label: `Ganhos de Buybox (${context === 'seller' ? 'Vendedor' : 'Global'})`, color: MARKETPLACE_CHART_COLOR },
   } satisfies ChartConfig;
+
+  const cardTitle = context === 'seller' 
+    ? "Ganhos de Buybox do Vendedor: Marcas e Marketplaces" 
+    : "Análise de Ganhos de Buybox: Marcas e Marketplaces (Global)";
+  
+  const cardDescription = context === 'seller'
+    ? "Visão gráfica das marcas e marketplaces onde o(s) vendedor(es) selecionado(s) mais venceram o buybox."
+    : "Visão gráfica das marcas e marketplaces cujos produtos (SKUs únicos) mais venceram o buybox (Global).";
+
 
   if (isLoading) {
     return (
       <Card className="shadow-lg">
         <CardHeader>
           <div className="flex items-center">
-            <Tags className="mr-2 h-5 w-5 text-primary" />
+            <Tags className="mr-1 h-5 w-5 text-primary" />
+            <Globe className="ml-1 mr-2 h-5 w-5 text-primary" />
             <Skeleton className="h-6 w-3/4 mb-1" />
           </div>
           <Skeleton className="h-4 w-full" />
@@ -85,7 +98,7 @@ export function BrandBuyboxWinnersDisplay({ brandBuyboxWins, marketplaceBuyboxWi
             <Skeleton className="h-[350px] w-full" />
             <Skeleton className="h-[350px] w-full" />
           </div>
-          <Skeleton className="h-[350px] w-full mt-8" />
+          <Skeleton className="h-[250px] w-full mt-8" />
         </CardContent>
       </Card>
     );
@@ -95,20 +108,17 @@ export function BrandBuyboxWinnersDisplay({ brandBuyboxWins, marketplaceBuyboxWi
   const noMarketplaceData = !marketplaceBuyboxWins || marketplaceBuyboxWins.length === 0;
 
   if (noBrandData && noMarketplaceData) {
-     // This state can be handled by the parent component in page.tsx for overall "no data" or "no mapping"
-    return null;
+    return null; // Parent component (SellerPerformanceDashboard) will handle "no data for charts" for the seller
   }
 
   return (
     <Card className="shadow-lg">
       <CardHeader>
-        <CardTitle className="flex items-center"><Tags className="mr-1 h-5 w-5 text-primary" />/<Globe className="ml-1 mr-2 h-5 w-5 text-primary" />Análise de Ganhos de Buybox: Marcas e Marketplaces</CardTitle>
-        <CardDescription>
-          Visão gráfica das marcas e marketplaces cujos produtos (SKUs únicos) mais venceram o buybox.
-        </CardDescription>
+        <CardTitle className="flex items-center"><Tags className="mr-1 h-5 w-5 text-primary" />/<Globe className="ml-1 mr-2 h-5 w-5 text-primary" />{cardTitle}</CardTitle>
+        <CardDescription>{cardDescription}</CardDescription>
       </CardHeader>
       <CardContent>
-        {noBrandData && noMarketplaceData ? (
+        {(noBrandData && noMarketplaceData && context === 'global') ? ( // Only show this for global if both are empty
             <CardDescription>Nenhuma informação de buybox por marca ou marketplace disponível com os filtros atuais ou mapeamentos.</CardDescription>
         ) : (
         <div className="space-y-8">
@@ -175,7 +185,7 @@ export function BrandBuyboxWinnersDisplay({ brandBuyboxWins, marketplaceBuyboxWi
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base sm:text-lg">Top {brandBarChartData.length} Marcas por Ganhos</CardTitle>
+                    <CardTitle className="text-base sm:text-lg">Top {brandBarChartData.length > TOP_N_BRANDS_BAR ? TOP_N_BRANDS_BAR : brandBarChartData.length} Marcas por Ganhos</CardTitle>
                   </CardHeader>
                   <CardContent className="h-[300px] sm:h-[350px]">
                     <ChartContainer config={brandBarChartConfig} className="w-full h-full">
@@ -206,7 +216,7 @@ export function BrandBuyboxWinnersDisplay({ brandBuyboxWins, marketplaceBuyboxWi
               </div>
             </>
           )}
-          {!noBrandData && brandBuyboxWins.length === 0 && (
+          {(!isLoading && noBrandData && context === 'global') && (
               <CardDescription className="text-center py-4">Nenhuma informação de buybox por marca para os filtros e mapeamentos atuais.</CardDescription>
           )}
 
@@ -215,10 +225,10 @@ export function BrandBuyboxWinnersDisplay({ brandBuyboxWins, marketplaceBuyboxWi
               <CardHeader>
                 <CardTitle className="text-base sm:text-lg flex items-center">
                   <Globe className="mr-2 h-5 w-5 text-primary" />
-                  Top {marketplaceBarChartData.length} Marketplaces por Ganhos de Buybox
+                  Top {marketplaceBarChartData.length > TOP_N_MARKETPLACES_BAR ? TOP_N_MARKETPLACES_BAR : marketplaceBarChartData.length} Marketplaces por Ganhos
                 </CardTitle>
               </CardHeader>
-              <CardContent className="h-[250px] sm:h-[300px]">
+              <CardContent className="h-[250px]"> {/* Reduced height */}
                 <ChartContainer config={marketplaceBarChartConfig} className="w-full h-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={marketplaceBarChartData} layout="vertical" margin={{ right: 35, left: 20, top: 5, bottom: 5 }}>
@@ -236,7 +246,7 @@ export function BrandBuyboxWinnersDisplay({ brandBuyboxWins, marketplaceBuyboxWi
                         cursor={{ fill: "hsl(var(--muted))" }}
                         content={<ChartTooltipContent indicator="dot" />}
                       />
-                      <Bar dataKey="wins" fill="var(--color-wins)" radius={[0, 4, 4, 0]} barSize={marketplaceBarChartData.length < 4 ? 35 : undefined}>
+                      <Bar dataKey="wins" fill="var(--color-wins, hsl(var(--chart-1)))" radius={[0, 4, 4, 0]} barSize={marketplaceBarChartData.length < 4 ? 35 : undefined}>
                         <LabelList dataKey="wins" position="right" offset={8} className="fill-foreground" fontSize={12} />
                       </Bar>
                     </BarChart>
@@ -245,10 +255,9 @@ export function BrandBuyboxWinnersDisplay({ brandBuyboxWins, marketplaceBuyboxWi
               </CardContent>
             </Card>
           )}
-           {!noMarketplaceData && marketplaceBuyboxWins.length === 0 && (
+           {(!isLoading && noMarketplaceData && context === 'global') && (
               <CardDescription className="text-center py-4 mt-4">Nenhuma informação de buybox por marketplace para os filtros atuais.</CardDescription>
           )}
-
         </div>
         )}
       </CardContent>

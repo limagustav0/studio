@@ -1,7 +1,6 @@
 
 import type { Product, PriceTrendProductInfo, Metrics, BuyboxWinner, SellerAnalysisMetrics, ProductLosingBuyboxInfo, ProductWinningBuyboxInfo, UniqueProductSummary, BrandBuyboxWinSummary, MarketplaceBuyboxWinSummary, InternalSkuMapping } from './types';
-import { parseISO, compareDesc, differenceInDays, format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { parseISO, compareDesc } from 'date-fns';
 
 interface ApiProduct {
   id: string;
@@ -263,7 +262,8 @@ export const calculateBuyboxWins = (products: Product[]): BuyboxWinner[] => {
 
 export const analyzeSellerPerformance = (
   allProducts: Product[],
-  selectedSellerName: string
+  selectedSellerName: string,
+  internalSkusMap: Record<string, InternalSkuMapping>
 ): SellerAnalysisMetrics | null => {
   if (!allProducts || allProducts.length === 0 || !selectedSellerName) {
     return null;
@@ -302,6 +302,8 @@ export const analyzeSellerPerformance = (
       buyboxesLost: 0,
       productsLosingBuybox: [],
       productsWinningBuybox: [],
+      brandBuyboxWins: [],
+      marketplaceBuyboxWins: [],
       lastUpdateTime: null,
     };
   }
@@ -327,11 +329,11 @@ export const analyzeSellerPerformance = (
       .sort((a,b) => compareDesc(parseISO(a.data_hora), parseISO(b.data_hora)));
 
     if (sellerProductInstancesForSku.length === 0) return;
-    const sellerProductForSku = sellerProductInstancesForSku[0]; // Most recent product from the seller for this SKU
+    const sellerProductForSku = sellerProductInstancesForSku[0]; 
 
     const allListingsForThisSku = productsBySkuGlobal[sku] || [];
 
-    if (allListingsForThisSku.length === 0) { // Seller is the only one listing this SKU
+    if (allListingsForThisSku.length === 0) { 
       buyboxesWonCount++;
       productsWinningBuybox.push({
         sku: sellerProductForSku.sku,
@@ -356,10 +358,9 @@ export const analyzeSellerPerformance = (
         globalMinPrice = p.preco_final;
         winningSellerForSkuAtGlobalMin = p.loja;
       } else if (p.preco_final === globalMinPrice) {
-        // Prioritize the selected seller if prices are tied
         if (winningSellerForSkuAtGlobalMin !== selectedSellerName && p.loja === selectedSellerName) {
            winningSellerForSkuAtGlobalMin = selectedSellerName;
-        } else if (!winningSellerForSkuAtGlobalMin) { // If no winner yet, assign
+        } else if (!winningSellerForSkuAtGlobalMin) { 
             winningSellerForSkuAtGlobalMin = p.loja;
         }
       }
@@ -367,7 +368,7 @@ export const analyzeSellerPerformance = (
 
     const sellerPriceForSku = sellerProductForSku.preco_final;
 
-    if (sellerPriceForSku <= globalMinPrice) { // Seller is winning or tied for winning
+    if (sellerPriceForSku <= globalMinPrice) { 
       buyboxesWonCount++;
       let nextCompetitorPrice: number | null = null;
       let nextCompetitorName: string | null = null;
@@ -403,7 +404,7 @@ export const analyzeSellerPerformance = (
         marketplace: sellerProductForSku.marketplace,
       });
       
-    } else { // Seller is losing
+    } else { 
       productsLosingBuybox.push({
         sku: sellerProductForSku.sku,
         descricao: sellerProductForSku.descricao,
@@ -424,6 +425,36 @@ export const analyzeSellerPerformance = (
   const uniqueLosingSkus = new Set(productsLosingBuybox.map(p => p.sku));
   const finalBuyboxesLost = uniqueLosingSkus.size;
 
+  // Calculate brand buybox wins for the selected seller
+  const sellerBrandWinsMap: Record<string, Set<string>> = {};
+  productsWinningBuybox.forEach(p => {
+    const brandMapping = internalSkusMap[p.sku];
+    const brand = brandMapping?.marca;
+    if (brand) {
+      if (!sellerBrandWinsMap[brand]) {
+        sellerBrandWinsMap[brand] = new Set();
+      }
+      sellerBrandWinsMap[brand].add(p.sku);
+    }
+  });
+  const sellerBrandBuyboxWins: BrandBuyboxWinSummary[] = Object.entries(sellerBrandWinsMap)
+    .map(([marca, skus]) => ({ marca, wins: skus.size }))
+    .sort((a, b) => b.wins - a.wins || a.marca.localeCompare(b.marca));
+
+  // Calculate marketplace buybox wins for the selected seller
+  const sellerMarketplaceWinsMap: Record<string, Set<string>> = {};
+  productsWinningBuybox.forEach(p => {
+    if (p.marketplace) {
+      if (!sellerMarketplaceWinsMap[p.marketplace]) {
+        sellerMarketplaceWinsMap[p.marketplace] = new Set();
+      }
+      sellerMarketplaceWinsMap[p.marketplace].add(p.sku);
+    }
+  });
+  const sellerMarketplaceBuyboxWins: MarketplaceBuyboxWinSummary[] = Object.entries(sellerMarketplaceWinsMap)
+    .map(([marketplace, skus]) => ({ marketplace, wins: skus.size }))
+    .sort((a, b) => b.wins - a.wins || a.marketplace.localeCompare(b.marketplace));
+
   return {
     sellerName: selectedSellerName,
     totalProductsListed: sellerProducts.length, 
@@ -431,6 +462,8 @@ export const analyzeSellerPerformance = (
     buyboxesLost: finalBuyboxesLost,
     productsLosingBuybox: productsLosingBuybox.sort((a,b) => b.priceDifference - a.priceDifference),
     productsWinningBuybox: productsWinningBuybox.sort((a,b) => (a.priceDifferenceToNext ?? Infinity) - (b.priceDifferenceToNext ?? Infinity) || a.descricao.localeCompare(b.descricao)),
+    brandBuyboxWins: sellerBrandBuyboxWins,
+    marketplaceBuyboxWins: sellerMarketplaceBuyboxWins,
     lastUpdateTime,
   };
 };
@@ -495,106 +528,4 @@ export const generateUniqueProductSummaries = (products: Product[]): UniqueProdu
   }
 
   return summaries.sort((a,b) => b.sellerCount - a.sellerCount || a.sku.localeCompare(b.sku));
-};
-
-export const calculateBrandBuyboxWins = (
-  products: Product[],
-  internalSkusMap: Record<string, InternalSkuMapping>
-): BrandBuyboxWinSummary[] => {
-  if (!products || products.length === 0 || Object.keys(internalSkusMap).length === 0) {
-    return [];
-  }
-
-  const productsBySku: Record<string, Product[]> = {};
-  products.forEach(product => {
-    if (!product || !product.sku || product.preco_final === null || product.preco_final === undefined) return;
-    if (!productsBySku[product.sku]) {
-      productsBySku[product.sku] = [];
-    }
-    productsBySku[product.sku].push(product);
-  });
-
-  const buyboxWinningSkusByBrand: Record<string, Set<string>> = {};
-
-  for (const principalSku in productsBySku) {
-    const skuProducts = productsBySku[principalSku];
-    if (skuProducts.length === 0) continue;
-
-    let minPrice = Infinity;
-    skuProducts.forEach(p => {
-      if (p.preco_final < minPrice) {
-        minPrice = p.preco_final;
-      }
-    });
-
-    if (minPrice === Infinity) continue;
-
-    const brandMapping = internalSkusMap[principalSku];
-    const brand = brandMapping?.marca;
-
-    if (brand) {
-      // Check if any product instance for this SKU has the minPrice
-      const isWinningSkuForBrand = skuProducts.some(p => p.preco_final === minPrice);
-      if (isWinningSkuForBrand) {
-        if (!buyboxWinningSkusByBrand[brand]) {
-          buyboxWinningSkusByBrand[brand] = new Set<string>();
-        }
-        buyboxWinningSkusByBrand[brand].add(principalSku);
-      }
-    }
-  }
-
-  return Object.entries(buyboxWinningSkusByBrand)
-    .map(([marca, winningSkusSet]) => ({
-      marca,
-      wins: winningSkusSet.size,
-    }))
-    .sort((a, b) => b.wins - a.wins || a.marca.localeCompare(b.marca));
-};
-
-export const calculateMarketplaceBuyboxWins = (products: Product[]): MarketplaceBuyboxWinSummary[] => {
-  if (!products || products.length === 0) return [];
-
-  const productsBySkuAndMarketplace: Record<string, Record<string, Product[]>> = {};
-  products.forEach(product => {
-    if (!product || !product.sku || !product.marketplace || product.preco_final === null || product.preco_final === undefined) return;
-    if (!productsBySkuAndMarketplace[product.sku]) {
-      productsBySkuAndMarketplace[product.sku] = {};
-    }
-    if (!productsBySkuAndMarketplace[product.sku][product.marketplace]) {
-      productsBySkuAndMarketplace[product.sku][product.marketplace] = [];
-    }
-    productsBySkuAndMarketplace[product.sku][product.marketplace].push(product);
-  });
-
-  const marketplaceWinsMap: Record<string, Set<string>> = {}; // Marketplace -> Set<SKU>
-
-  for (const sku in productsBySkuAndMarketplace) {
-    for (const marketplace in productsBySkuAndMarketplace[sku]) {
-      const skuMarketplaceProducts = productsBySkuAndMarketplace[sku][marketplace];
-      if (skuMarketplaceProducts.length === 0) continue;
-
-      let minPrice = Infinity;
-      skuMarketplaceProducts.forEach(p => {
-        if (p.preco_final < minPrice) {
-          minPrice = p.preco_final;
-        }
-      });
-
-      if (minPrice === Infinity) continue;
-      
-      const isWinningSkuInMarketplace = skuMarketplaceProducts.some(p => p.preco_final === minPrice);
-
-      if (isWinningSkuInMarketplace) {
-        if (!marketplaceWinsMap[marketplace]) {
-          marketplaceWinsMap[marketplace] = new Set();
-        }
-        marketplaceWinsMap[marketplace].add(sku);
-      }
-    }
-  }
-
-  return Object.entries(marketplaceWinsMap)
-    .map(([marketplace, skus]) => ({ marketplace, wins: skus.size }))
-    .sort((a, b) => b.wins - a.wins || a.marketplace.localeCompare(b.marketplace));
 };

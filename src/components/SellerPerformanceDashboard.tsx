@@ -1,13 +1,14 @@
 
-import type { SellerAnalysisMetrics, ProductLosingBuyboxInfo, ProductWinningBuyboxInfo } from '@/lib/types';
+import type { SellerAnalysisMetrics, ProductLosingBuyboxInfo, ProductWinningBuyboxInfo, BrandBuyboxWinSummary, MarketplaceBuyboxWinSummary, InternalSkuMapping } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TrendingUp, TrendingDown, ListChecks, PackageSearch, AlertTriangle, Info, CheckCircle2, Clock, Users } from 'lucide-react';
+import { TrendingUp, TrendingDown, ListChecks, PackageSearch, AlertTriangle, Info, CheckCircle2, Clock, Users, Tags, Globe } from 'lucide-react';
 import Image from 'next/image';
 import { format as formatDate, parseISO, compareDesc } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
+import { BrandBuyboxWinnersDisplay } from '@/components/BrandBuyboxWinnersDisplay';
 import {
   Accordion,
   AccordionContent,
@@ -21,9 +22,10 @@ interface SellerPerformanceDashboardProps {
   isLoading: boolean;
   selectedSellersCount: number;
   selectedSellerNames: string[];
+  internalSkusMap: Record<string, InternalSkuMapping>; // Pass this down
 }
 
-export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, selectedSellersCount, selectedSellerNames }: SellerPerformanceDashboardProps) {
+export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, selectedSellersCount, selectedSellerNames, internalSkusMap }: SellerPerformanceDashboardProps) {
   const formatLastUpdateTime = (isoDateString: string | null) => {
     if (!isoDateString) return 'N/A';
     try {
@@ -56,6 +58,104 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
     }
     return <span className="text-red-600">Perdendo por R$ {Math.abs(diff).toFixed(2)}</span>;
   };
+  
+  const consolidatedMetrics = React.useMemo(() => {
+    if (!performanceMetricsList || performanceMetricsList.length === 0) {
+      return {
+        totalProductsListed: 0,
+        buyboxesWon: 0,
+        buyboxesLost: 0,
+        allLosingProducts: [],
+        allWinningProducts: [],
+        latestLastUpdateTime: null,
+        consolidatedBrandWins: [],
+        consolidatedMarketplaceWins: [],
+      };
+    }
+
+    let totalProductsListed = 0;
+    const winningSkusSellerMap = new Map<string, Set<string>>(); // sku -> Set<sellerName>
+    const losingSkusSellerMap = new Map<string, Set<string>>();   // sku -> Set<sellerName>
+    let latestLastUpdateTime: string | null = null;
+
+    const tempAllLosingProducts: (ProductLosingBuyboxInfo & { sellerName: string })[] = [];
+    const tempAllWinningProducts: (ProductWinningBuyboxInfo & { sellerName: string })[] = [];
+    
+    const brandWinsAggregator: Record<string, number> = {};
+    const marketplaceWinsAggregator: Record<string, number> = {};
+
+    performanceMetricsList.forEach(metrics => {
+      totalProductsListed += metrics.totalProductsListed;
+      
+      metrics.productsWinningBuybox.forEach(p => {
+        if (!winningSkusSellerMap.has(p.sku)) winningSkusSellerMap.set(p.sku, new Set());
+        winningSkusSellerMap.get(p.sku)?.add(metrics.sellerName);
+        tempAllWinningProducts.push({ ...p, sellerName: metrics.sellerName });
+      });
+      
+      metrics.productsLosingBuybox.forEach(p => {
+        if (!losingSkusSellerMap.has(p.sku)) losingSkusSellerMap.set(p.sku, new Set());
+        losingSkusSellerMap.get(p.sku)?.add(metrics.sellerName);
+        tempAllLosingProducts.push({ ...p, sellerName: metrics.sellerName });
+      });
+
+      if (metrics.lastUpdateTime && (!latestLastUpdateTime || compareDesc(parseISO(metrics.lastUpdateTime), parseISO(latestLastUpdateTime)) < 0)) {
+        latestLastUpdateTime = metrics.lastUpdateTime;
+      }
+
+      metrics.brandBuyboxWins.forEach(bw => {
+        brandWinsAggregator[bw.marca] = (brandWinsAggregator[bw.marca] || 0) + bw.wins;
+      });
+      metrics.marketplaceBuyboxWins.forEach(mw => {
+        marketplaceWinsAggregator[mw.marketplace] = (marketplaceWinsAggregator[mw.marketplace] || 0) + mw.wins;
+      });
+    });
+    
+    // For buyboxes won/lost, we count unique SKUs across all selected sellers.
+    // An SKU is won if AT LEAST ONE selected seller wins it.
+    // An SKU is lost if ALL selected sellers who list it are losing it.
+    let consolidatedBuyboxesWon = 0;
+    winningSkusSellerMap.forEach((sellersWinningThisSku, sku) => {
+        // If any of the selected sellers win this SKU, it's a win for the group
+        if (selectedSellerNames.some(selectedSeller => sellersWinningThisSku.has(selectedSeller))) {
+            consolidatedBuyboxesWon++;
+        }
+    });
+
+    let consolidatedBuyboxesLost = 0;
+    losingSkusSellerMap.forEach((sellersLosingThisSku, sku) => {
+        // This SKU is lost for the group if all selected sellers who offer it are losing
+        const selectedSellersOfferingSku = selectedSellerNames.filter(selectedSeller => {
+             return performanceMetricsList.find(m => m.sellerName === selectedSeller)?.productsLosingBuybox.some(p => p.sku === sku) ||
+                    performanceMetricsList.find(m => m.sellerName === selectedSeller)?.productsWinningBuybox.some(p => p.sku === sku);
+        });
+        if (selectedSellersOfferingSku.length > 0 && selectedSellersOfferingSku.every(seller => sellersLosingThisSku.has(seller))) {
+            consolidatedBuyboxesLost++;
+        }
+    });
+
+
+    const consolidatedBrandWins: BrandBuyboxWinSummary[] = Object.entries(brandWinsAggregator)
+        .map(([marca, wins]) => ({ marca, wins }))
+        .sort((a, b) => b.wins - a.wins || a.marca.localeCompare(b.marca));
+
+    const consolidatedMarketplaceWins: MarketplaceBuyboxWinSummary[] = Object.entries(marketplaceWinsAggregator)
+        .map(([marketplace, wins]) => ({ marketplace, wins }))
+        .sort((a, b) => b.wins - a.wins || a.marketplace.localeCompare(b.marketplace));
+
+    return {
+      totalProductsListed,
+      buyboxesWon: consolidatedBuyboxesWon,
+      buyboxesLost: consolidatedBuyboxesLost,
+      allLosingProducts: tempAllLosingProducts.sort((a,b) => b.priceDifference - a.priceDifference || a.descricao.localeCompare(b.descricao)),
+      allWinningProducts: tempAllWinningProducts.sort((a,b) => (a.priceDifferenceToNext ?? Infinity) - (b.priceDifferenceToNext ?? Infinity) || a.descricao.localeCompare(b.descricao)),
+      latestLastUpdateTime,
+      consolidatedBrandWins,
+      consolidatedMarketplaceWins,
+    };
+
+  }, [performanceMetricsList, selectedSellerNames]);
+
 
   if (isLoading) {
     return (
@@ -76,6 +176,7 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
               </Card>
             ))}
           </div>
+          <Skeleton className="h-[400px] w-full" /> 
           <div><Skeleton className="h-6 w-1/2 mb-4" /><Skeleton className="h-40 w-full" /></div>
           <div><Skeleton className="h-6 w-1/2 mb-4 mt-6" /><Skeleton className="h-40 w-full" /></div>
         </CardContent>
@@ -104,7 +205,7 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
       <Card className="shadow-lg w-full">
         <CardHeader>
           <CardTitle className="flex items-center"><PackageSearch className="mr-2 h-5 w-5 text-primary" />Análise de Desempenho Consolidada</CardTitle>
-          {performanceMetricsList[0]?.lastUpdateTime && (<p className="text-xs text-muted-foreground flex items-center"><Clock className="mr-1.5 h-3 w-3" />Dados (mais recentes) atualizados em: {formatLastUpdateTime(performanceMetricsList[0]?.lastUpdateTime)}</p>)}
+           <p className="text-xs text-muted-foreground flex items-center"><Clock className="mr-1.5 h-3 w-3" />Dados (mais recentes) atualizados em: {consolidatedMetrics.latestLastUpdateTime ? formatLastUpdateTime(consolidatedMetrics.latestLastUpdateTime) : 'N/A'}</p>
           <CardDescription>Não foi possível carregar os dados de desempenho para o(s) vendedor(es) selecionado(s) ou não há dados disponíveis.</CardDescription>
         </CardHeader>
          <CardContent>
@@ -116,38 +217,13 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
       </Card>
     );
   }
-
-  let consolidatedTotalProductsListed = 0;
-  const winningSkus = new Set<string>();
-  const losingSkus = new Set<string>();
-  let latestLastUpdateTime: string | null = null;
-
-  const allLosingProducts: (ProductLosingBuyboxInfo & { sellerName: string })[] = [];
-  const allWinningProducts: (ProductWinningBuyboxInfo & { sellerName: string })[] = [];
-
-  performanceMetricsList.forEach(metrics => {
-    consolidatedTotalProductsListed += metrics.totalProductsListed;
-    metrics.productsWinningBuybox.forEach(p => winningSkus.add(p.sku));
-    metrics.productsLosingBuybox.forEach(p => losingSkus.add(p.sku));
-    if (metrics.lastUpdateTime && (!latestLastUpdateTime || compareDesc(parseISO(metrics.lastUpdateTime), parseISO(latestLastUpdateTime)) < 0)) {
-      latestLastUpdateTime = metrics.lastUpdateTime;
-    }
-    metrics.productsLosingBuybox.forEach(p => allLosingProducts.push({ ...p, sellerName: metrics.sellerName }));
-    metrics.productsWinningBuybox.forEach(p => allWinningProducts.push({ ...p, sellerName: metrics.sellerName }));
-  });
-
-  const consolidatedBuyboxesWon = winningSkus.size;
-  const consolidatedBuyboxesLost = losingSkus.size;
   
-  allLosingProducts.sort((a,b) => b.priceDifference - a.priceDifference || a.descricao.localeCompare(b.descricao));
-  allWinningProducts.sort((a,b) => (a.priceDifferenceToNext ?? Infinity) - (b.priceDifferenceToNext ?? Infinity) || a.descricao.localeCompare(b.descricao));
-
   if (performanceMetricsList.every(m => m.totalProductsListed === 0)) {
       return (
         <Card className="shadow-lg w-full">
             <CardHeader>
             <CardTitle className="flex items-center"><PackageSearch className="mr-2 h-5 w-5 text-primary" />Análise Consolidada: {selectedSellerNames.join(', ')}</CardTitle>
-            {latestLastUpdateTime && (<p className="text-xs text-muted-foreground flex items-center"><Clock className="mr-1.5 h-3 w-3" />Dados (mais recentes) atualizados em: {formatLastUpdateTime(latestLastUpdateTime)}</p>)}
+            {consolidatedMetrics.latestLastUpdateTime && (<p className="text-xs text-muted-foreground flex items-center"><Clock className="mr-1.5 h-3 w-3" />Dados (mais recentes) atualizados em: {formatLastUpdateTime(consolidatedMetrics.latestLastUpdateTime)}</p>)}
             <CardDescription>Nenhum produto listado para os vendedores selecionados (considerando filtros).</CardDescription>
             </CardHeader>
             <CardContent><div className="flex flex-col items-center justify-center py-10 text-muted-foreground"><Info className="h-12 w-12 mb-4"/><p className="text-center">Sem produtos listados.</p></div></CardContent>
@@ -155,35 +231,55 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
         );
   }
 
+  const isChartDataLoading = isLoading || (performanceMetricsList.length > 0 && (consolidatedMetrics.consolidatedBrandWins.length === 0 && consolidatedMetrics.consolidatedMarketplaceWins.length === 0 && Object.keys(internalSkusMap).length === 0) && consolidatedMetrics.buyboxesWon > 0);
+
+
   return (
     <Card className="shadow-lg w-full">
       <CardHeader>
         <CardTitle className="flex items-center"><Users className="mr-2 h-5 w-5 text-primary" />Análise Consolidada: {selectedSellerNames.join(', ')}</CardTitle>
-        {latestLastUpdateTime && (<p className="text-xs text-muted-foreground flex items-center"><Clock className="mr-1.5 h-3 w-3" />Dados (mais recentes) atualizados em: {formatLastUpdateTime(latestLastUpdateTime)}</p>)}
+        {consolidatedMetrics.latestLastUpdateTime && (<p className="text-xs text-muted-foreground flex items-center"><Clock className="mr-1.5 h-3 w-3" />Dados (mais recentes) atualizados em: {formatLastUpdateTime(consolidatedMetrics.latestLastUpdateTime)}</p>)}
         <CardDescription>Métricas combinadas e detalhamento de produtos para os vendedores selecionados.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Produtos Listados</CardTitle><ListChecks className="h-5 w-5 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{consolidatedTotalProductsListed}</div><p className="text-xs text-muted-foreground">Soma de produtos ofertados</p></CardContent></Card>
-          <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Buyboxes Ganhos (SKUs)</CardTitle><TrendingUp className="h-5 w-5 text-green-600" /></CardHeader><CardContent><div className="text-2xl font-bold">{consolidatedBuyboxesWon}</div><p className="text-xs text-muted-foreground">SKUs com menor preço</p></CardContent></Card>
-          <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Buyboxes Perdidos (SKUs)</CardTitle><TrendingDown className="h-5 w-5 text-red-600" /></CardHeader><CardContent><div className="text-2xl font-bold">{consolidatedBuyboxesLost}</div><p className="text-xs text-muted-foreground">SKUs onde perde para outro</p></CardContent></Card>
+          <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Produtos Listados</CardTitle><ListChecks className="h-5 w-5 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{consolidatedMetrics.totalProductsListed}</div><p className="text-xs text-muted-foreground">Soma de produtos ofertados</p></CardContent></Card>
+          <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Buyboxes Ganhos (SKUs)</CardTitle><TrendingUp className="h-5 w-5 text-green-600" /></CardHeader><CardContent><div className="text-2xl font-bold">{consolidatedMetrics.buyboxesWon}</div><p className="text-xs text-muted-foreground">SKUs únicos com menor preço</p></CardContent></Card>
+          <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Buyboxes Perdidos (SKUs)</CardTitle><TrendingDown className="h-5 w-5 text-red-600" /></CardHeader><CardContent><div className="text-2xl font-bold">{consolidatedMetrics.buyboxesLost}</div><p className="text-xs text-muted-foreground">SKUs únicos onde perde para outro</p></CardContent></Card>
         </div>
         
+        {(consolidatedMetrics.consolidatedBrandWins.length > 0 || consolidatedMetrics.consolidatedMarketplaceWins.length > 0 || isChartDataLoading) && (
+             <BrandBuyboxWinnersDisplay 
+                brandBuyboxWins={consolidatedMetrics.consolidatedBrandWins}
+                marketplaceBuyboxWins={consolidatedMetrics.consolidatedMarketplaceWins}
+                isLoading={isChartDataLoading}
+                context="seller" 
+             />
+        )}
+         {(!isLoading && consolidatedMetrics.buyboxesWon > 0 && consolidatedMetrics.consolidatedBrandWins.length === 0 && Object.keys(internalSkusMap).length === 0) &&
+                <Card className="shadow-sm mt-6">
+                    <CardHeader>
+                        <CardTitle className="text-base flex items-center"><Tags className="mr-2 h-5 w-5 text-primary" />Ganhos de Buybox por Marca (Vendedor)</CardTitle>
+                        <CardDescription>Importe o mapeamento de SKUs e Marcas para visualizar esta análise para o(s) vendedor(es) selecionado(s).</CardDescription>
+                    </CardHeader>
+                </Card>
+            }
+
         <Accordion type="multiple" className="w-full" defaultValue={['losing-buybox', 'winning-buybox']}>
           <AccordionItem value="losing-buybox">
             <AccordionTrigger className="text-lg font-semibold hover:no-underline p-0 py-3 data-[state=open]:pb-2">
               <div className="flex items-center">
                 <AlertTriangle className="mr-2 h-5 w-5 text-destructive" />
-                Produtos Perdendo Buybox
+                Produtos Perdendo Buybox ({consolidatedMetrics.allLosingProducts.length})
               </div>
             </AccordionTrigger>
             <AccordionContent className="pt-2 pb-0">
-              {allLosingProducts.length > 0 ? (
-                <div className="overflow-x-auto rounded-md border">
+              {consolidatedMetrics.allLosingProducts.length > 0 ? (
+                <div className="overflow-x-auto rounded-md border max-h-[500px]">
                   <Table>
-                    <TableHeader><TableRow><TableHead className="w-[60px] hidden sm:table-cell">Img</TableHead><TableHead>Produto (SKU/Marca)</TableHead><TableHead>Vendedor (Mktplace)</TableHead><TableHead className="text-right">Preços</TableHead><TableHead>Vencedor (Dif.)</TableHead><TableHead className="text-right">Raspagem</TableHead></TableRow></TableHeader>
+                    <TableHeader><TableRow><TableHead className="w-[60px] hidden sm:table-cell">Img</TableHead><TableHead>Produto (SKU/Marca)</TableHead><TableHead>Vendedor Ofertante (Mktplace)</TableHead><TableHead className="text-right">Preços</TableHead><TableHead>Vencedor (Dif.)</TableHead><TableHead className="text-right">Raspagem</TableHead></TableRow></TableHeader>
                     <TableBody>
-                      {allLosingProducts.map((item, idx) => (
+                      {consolidatedMetrics.allLosingProducts.map((item, idx) => (
                         <TableRow key={`losing-${item.sku}-${item.sellerName}-${item.marketplace}-${idx}`}>
                           <TableCell className="hidden sm:table-cell"><Image src={item.imagem || "https://placehold.co/50x50.png"} alt={item.descricao} width={50} height={50} className="rounded" data-ai-hint="product item small"/></TableCell>
                           <TableCell>
@@ -201,9 +297,9 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
                     </TableBody>
                   </Table>
                 </div>
-              ) : consolidatedBuyboxesLost > 0 ? (
+              ) : consolidatedMetrics.buyboxesLost > 0 ? (
                 <p className="text-sm text-muted-foreground mt-2">Detalhes de produtos perdendo buybox não disponíveis.</p>
-              ) : consolidatedTotalProductsListed > 0 ? (
+              ) : consolidatedMetrics.totalProductsListed > 0 ? (
                 <p className="text-sm text-green-600 font-medium mt-2">Nenhum vendedor selecionado está perdendo buyboxes!</p>
               ) : (
                 <p className="text-sm text-muted-foreground mt-2">Nenhuma informação de buybox perdido disponível.</p>
@@ -215,16 +311,16 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
             <AccordionTrigger className="text-lg font-semibold hover:no-underline p-0 py-3 data-[state=open]:pb-2">
               <div className="flex items-center">
                 <CheckCircle2 className="mr-2 h-5 w-5 text-green-600" />
-                Produtos Ganhando Buybox
+                Produtos Ganhando Buybox ({consolidatedMetrics.allWinningProducts.length})
               </div>
             </AccordionTrigger>
             <AccordionContent className="pt-2 pb-0">
-              {allWinningProducts.length > 0 ? (
-                <div className="overflow-x-auto rounded-md border">
+              {consolidatedMetrics.allWinningProducts.length > 0 ? (
+                <div className="overflow-x-auto rounded-md border max-h-[500px]">
                   <Table>
-                    <TableHeader><TableRow><TableHead className="w-[60px] hidden sm:table-cell">Img</TableHead><TableHead>Produto (SKU/Marca)</TableHead><TableHead>Vendedor (Mktplace)</TableHead><TableHead className="text-right">Seu Preço (Margem)</TableHead><TableHead>Próx. Concorrente</TableHead><TableHead className="text-right">Raspagem</TableHead></TableRow></TableHeader>
+                    <TableHeader><TableRow><TableHead className="w-[60px] hidden sm:table-cell">Img</TableHead><TableHead>Produto (SKU/Marca)</TableHead><TableHead>Vendedor Ofertante (Mktplace)</TableHead><TableHead className="text-right">Seu Preço (Margem)</TableHead><TableHead>Próx. Concorrente</TableHead><TableHead className="text-right">Raspagem</TableHead></TableRow></TableHeader>
                     <TableBody>
-                      {allWinningProducts.map((item, idx) => (
+                      {consolidatedMetrics.allWinningProducts.map((item, idx) => (
                         <TableRow key={`winning-${item.sku}-${item.sellerName}-${item.marketplace}-${idx}`}>
                           <TableCell className="hidden sm:table-cell"><Image src={item.imagem || "https://placehold.co/50x50.png"} alt={item.descricao} width={50} height={50} className="rounded" data-ai-hint="product item small"/></TableCell>
                           <TableCell>
@@ -245,8 +341,8 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
                     </TableBody>
                   </Table>
                 </div>
-              ) : consolidatedBuyboxesWon > 0 ? (
-                <p className="text-sm text-muted-foreground mt-2">Ganhando {consolidatedBuyboxesWon} buybox(es), mas detalhes não disponíveis (sem concorrência direta ou erro).</p>
+              ) : consolidatedMetrics.buyboxesWon > 0 ? (
+                <p className="text-sm text-muted-foreground mt-2">Ganhando {consolidatedMetrics.buyboxesWon} buybox(es), mas detalhes não disponíveis (sem concorrência direta ou erro).</p>
               ) : (
                 <p className="text-sm text-red-600 font-medium mt-2">Nenhum vendedor selecionado ganhando buyboxes.</p>
               )}
@@ -257,4 +353,3 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
     </Card>
   );
 }
-
