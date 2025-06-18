@@ -1,21 +1,19 @@
 
-import type { BrandBuyboxWinSummary, MarketplaceBuyboxWinSummary } from '@/lib/types';
+import type { BrandBuyboxWinSummary } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tags, Globe, BarChartHorizontalBig } from 'lucide-react';
+import { Tags } from 'lucide-react';
 import * as React from 'react';
 import { PieChart, Pie, Cell, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, LabelList } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 
 interface BrandBuyboxWinnersDisplayProps {
   brandBuyboxWins: BrandBuyboxWinSummary[];
-  marketplaceBuyboxWins: MarketplaceBuyboxWinSummary[];
   isLoading: boolean;
 }
 
 const TOP_N_BRANDS_PIE = 5;
 const TOP_N_BRANDS_BAR = 10;
-const TOP_N_MARKETPLACES_BAR = 10;
 
 const COLORS_PIE = [
   "hsl(var(--chart-1))",   // Bright Cyan
@@ -31,19 +29,19 @@ const COLORS_PIE = [
 ];
 
 
-export function BrandBuyboxWinnersDisplay({ brandBuyboxWins, marketplaceBuyboxWins, isLoading }: BrandBuyboxWinnersDisplayProps) {
+export function BrandBuyboxWinnersDisplay({ brandBuyboxWins, isLoading }: BrandBuyboxWinnersDisplayProps) {
   const processedPieData = React.useMemo(() => {
     if (!brandBuyboxWins || brandBuyboxWins.length === 0) return [];
     const sortedWins = [...brandBuyboxWins].sort((a,b) => b.wins - a.wins);
     if (sortedWins.length <= TOP_N_BRANDS_PIE) {
-      return sortedWins;
+      return sortedWins.map(item => ({ ...item, name: item.marca, value: item.wins }));
     }
     const topN = sortedWins.slice(0, TOP_N_BRANDS_PIE);
     const othersWins = sortedWins.slice(TOP_N_BRANDS_PIE).reduce((sum, item) => sum + item.wins, 0);
     if (othersWins > 0) {
-      return [...topN, { marca: "Outras", wins: othersWins }];
+      return [...topN.map(item => ({ ...item, name: item.marca, value: item.wins })), { marca: "Outras", wins: othersWins, name: "Outras", value: othersWins }];
     }
-    return topN;
+    return topN.map(item => ({ ...item, name: item.marca, value: item.wins }));
   }, [brandBuyboxWins]);
 
   const pieChartConfig = React.useMemo(() => {
@@ -70,18 +68,6 @@ export function BrandBuyboxWinnersDisplay({ brandBuyboxWins, marketplaceBuyboxWi
     },
   } satisfies ChartConfig;
 
-  const marketplaceBarChartData = React.useMemo(() => {
-    if (!marketplaceBuyboxWins) return [];
-    return [...marketplaceBuyboxWins].sort((a,b) => b.wins - a.wins).slice(0, TOP_N_MARKETPLACES_BAR).reverse();
-  }, [marketplaceBuyboxWins]);
-
-  const marketplaceBarChartConfig = {
-    wins: {
-      label: "Ganhos de Buybox (Marketplace)",
-      color: "hsl(var(--chart-2))", // Using a different chart color
-    },
-  } satisfies ChartConfig;
-
 
   if (isLoading) {
     return (
@@ -98,32 +84,29 @@ export function BrandBuyboxWinnersDisplay({ brandBuyboxWins, marketplaceBuyboxWi
             <Skeleton className="h-[350px] w-full" />
             <Skeleton className="h-[350px] w-full" />
           </div>
-           <Skeleton className="h-[350px] w-full mt-8" /> {/* Skeleton for Marketplace chart */}
         </CardContent>
       </Card>
     );
   }
   
   const noBrandData = !brandBuyboxWins || brandBuyboxWins.length === 0;
-  const noMarketplaceData = !marketplaceBuyboxWins || marketplaceBuyboxWins.length === 0;
 
-  if (noBrandData && noMarketplaceData) {
-    // This state is handled by the parent component in page.tsx
+  if (noBrandData) {
+    // This state is handled by the parent component in page.tsx for overall "no brand mapping"
     return null;
   }
 
   return (
     <Card className="shadow-lg">
       <CardHeader>
-        <CardTitle className="flex items-center"><Tags className="mr-2 h-5 w-5 text-primary" />Vencedores de Buybox por Marca & Marketplace</CardTitle>
+        <CardTitle className="flex items-center"><Tags className="mr-2 h-5 w-5 text-primary" />Vencedores de Buybox por Marca</CardTitle>
         <CardDescription>
-          Visão gráfica das marcas e marketplaces cujos produtos (SKUs únicos) mais venceram o buybox.
+          Visão gráfica das marcas cujos produtos (SKUs únicos) mais venceram o buybox.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {(brandBuyboxWins.length > 0 || marketplaceBuyboxWins.length > 0) ? (
+        {brandBuyboxWins.length > 0 ? (
           <div className="space-y-8">
-            {brandBuyboxWins.length > 0 && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <Card>
                   <CardHeader>
@@ -135,12 +118,12 @@ export function BrandBuyboxWinnersDisplay({ brandBuyboxWins, marketplaceBuyboxWi
                         <PieChart>
                           <ChartTooltip 
                             cursor={{ fill: "hsl(var(--muted))" }}
-                            content={<ChartTooltipContent hideLabel nameKey="marca" />} 
+                            content={<ChartTooltipContent hideLabel nameKey="name" />} 
                           />
                           <Pie 
                             data={processedPieData} 
-                            dataKey="wins" 
-                            nameKey="marca" 
+                            dataKey="value" 
+                            nameKey="name" 
                             cx="50%" 
                             cy="50%" 
                             outerRadius="80%" 
@@ -153,7 +136,7 @@ export function BrandBuyboxWinnersDisplay({ brandBuyboxWins, marketplaceBuyboxWi
                               if ((percent * 100) < 5) return null; 
                               return (
                                 <text x={x} y={y} fill="hsl(var(--foreground))" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize={12}>
-                                  {`${processedPieData[index].marca} (${(percent * 100).toFixed(0)}%)`}
+                                  {`${processedPieData[index].name} (${(percent * 100).toFixed(0)}%)`}
                                 </text>
                               );
                             }}
@@ -167,12 +150,12 @@ export function BrandBuyboxWinnersDisplay({ brandBuyboxWins, marketplaceBuyboxWi
                           </Pie>
                           <Legend 
                             iconSize={10} 
-                            wrapperStyle={{fontSize: "12px"}}
-                            formatter={(value) => {
-                               const originalEntry = processedPieData.find(p => p.marca === value);
+                            wrapperStyle={{fontSize: "12px", fill: "hsl(var(--foreground))"}}
+                            formatter={(value, entry) => {
+                               const originalEntry = processedPieData.find(p => p.name === value);
                                return (
                                   <span style={{ color: "hsl(var(--foreground))" }}>
-                                    {originalEntry ? `${value} (${originalEntry.wins})` : value}
+                                    {originalEntry ? `${value} (${originalEntry.value})` : value}
                                   </span>
                                 );
                             }}
@@ -214,50 +197,11 @@ export function BrandBuyboxWinnersDisplay({ brandBuyboxWins, marketplaceBuyboxWi
                   </CardContent>
                 </Card>
               </div>
-            )}
-            
-            {marketplaceBuyboxWins.length > 0 && (
-                 <Card className="mt-8">
-                    <CardHeader>
-                        <CardTitle className="text-base sm:text-lg flex items-center">
-                            <Globe className="mr-2 h-5 w-5 text-primary" />
-                            Top {marketplaceBarChartData.length} Marketplaces por Ganhos de Buybox
-                        </CardTitle>
-                        <CardDescription>Marketplaces onde mais SKUs únicos ganharam o buybox.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="h-[300px] sm:h-[350px]">
-                        <ChartContainer config={marketplaceBarChartConfig} className="w-full h-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={marketplaceBarChartData} layout="vertical" margin={{ right: 35, left: 20, top: 5, bottom: 5 }}>
-                            <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                            <YAxis 
-                                dataKey="marketplace" 
-                                type="category" 
-                                width={130} 
-                                interval={0} 
-                                stroke="hsl(var(--muted-foreground))" 
-                                fontSize={12}
-                                tickFormatter={(value) => value.length > 15 ? `${value.substring(0,13)}...` : value}
-                            />
-                            <ChartTooltip
-                                cursor={{ fill: "hsl(var(--muted))" }}
-                                content={<ChartTooltipContent indicator="dot" />}
-                            />
-                            <Bar dataKey="wins" fill="var(--color-wins)" radius={[0, 4, 4, 0]} barSize={marketplaceBarChartData.length < 5 ? 40 : undefined}>
-                                <LabelList dataKey="wins" position="right" offset={8} className="fill-foreground" fontSize={12} />
-                            </Bar>
-                            </BarChart>
-                        </ResponsiveContainer>
-                        </ChartContainer>
-                    </CardContent>
-                 </Card>
-            )}
           </div>
         ) : (
-          <CardDescription>Nenhuma informação de buybox por marca ou marketplace disponível com os filtros atuais.</CardDescription>
+          <CardDescription>Nenhuma informação de buybox por marca disponível com os filtros atuais.</CardDescription>
         )}
       </CardContent>
     </Card>
   );
 }
-
