@@ -140,8 +140,8 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
         <Card className="shadow-lg w-full">
             <CardHeader>
             <CardTitle className="flex items-center"><PackageSearch className="mr-2 h-5 w-5 text-primary" />Análise Consolidada: {selectedSellerNames.join(', ')}</CardTitle>
+            {latestLastUpdateTime && (<p className="text-xs text-muted-foreground flex items-center"><Clock className="mr-1.5 h-3 w-3" />Dados (mais recentes) atualizados em: {formatLastUpdateTime(latestLastUpdateTime)}</p>)}
             <CardDescription>Nenhum produto listado para os vendedores selecionados (considerando filtros).</CardDescription>
-            {latestLastUpdateTime && (<p className="text-xs text-muted-foreground mt-1 flex items-center"><Clock className="mr-1.5 h-3 w-3" />Dados atualizados em: {formatLastUpdateTime(latestLastUpdateTime)}</p>)}
             </CardHeader>
             <CardContent><div className="flex flex-col items-center justify-center py-10 text-muted-foreground"><Info className="h-12 w-12 mb-4"/><p className="text-center">Sem produtos listados.</p></div></CardContent>
         </Card>
@@ -152,8 +152,8 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
     <Card className="shadow-lg w-full">
       <CardHeader>
         <CardTitle className="flex items-center"><Users className="mr-2 h-5 w-5 text-primary" />Análise Consolidada: {selectedSellerNames.join(', ')}</CardTitle>
+        {latestLastUpdateTime && (<p className="text-xs text-muted-foreground flex items-center"><Clock className="mr-1.5 h-3 w-3" />Dados (mais recentes) atualizados em: {formatLastUpdateTime(latestLastUpdateTime)}</p>)}
         <CardDescription>Métricas combinadas e detalhamento de produtos para os vendedores selecionados.</CardDescription>
-        {latestLastUpdateTime && (<p className="text-xs text-muted-foreground pt-1 flex items-center"><Clock className="mr-1.5 h-3 w-3" />Dados (mais recentes) atualizados em: {formatLastUpdateTime(latestLastUpdateTime)}</p>)}
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -230,3 +230,4 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
     </Card>
   );
 }
+
