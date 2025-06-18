@@ -1,35 +1,31 @@
 
-import type { BrandBuyboxWinSummary } from '@/lib/types';
+import type { BrandBuyboxWinSummary, MarketplaceBuyboxWinSummary } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tags } from 'lucide-react';
+import { Tags, Globe } from 'lucide-react';
 import * as React from 'react';
 import { PieChart, Pie, Cell, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, LabelList } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 
 interface BrandBuyboxWinnersDisplayProps {
   brandBuyboxWins: BrandBuyboxWinSummary[];
+  marketplaceBuyboxWins: MarketplaceBuyboxWinSummary[];
   isLoading: boolean;
 }
 
 const TOP_N_BRANDS_PIE = 5;
 const TOP_N_BRANDS_BAR = 10;
+const TOP_N_MARKETPLACES_BAR = 5;
 
 const COLORS_PIE = [
-  "hsl(var(--chart-1))",   // Bright Cyan
-  "hsl(var(--chart-2))",   // Bright Magenta
-  "hsl(var(--chart-3))",   // Darker Cyan
-  "hsl(60 90% 50%)",      // Bright Yellow
-  "hsl(var(--chart-4))",   // Darker Magenta
-  "hsl(25 95% 53%)",      // Bright Orange
-  "hsl(var(--chart-5))",   // Muted Gray-Blue
-  "hsl(150 85% 45%)",     // Bright Green
-  "hsl(200 90% 55%)",     // Bright Blue
-  "hsl(330 90% 65%)",     // Bright Pink
+  "hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))",
+  "hsl(60 90% 50%)", "hsl(var(--chart-4))", "hsl(25 95% 53%)",
+  "hsl(var(--chart-5))", "hsl(150 85% 45%)", "hsl(200 90% 55%)",
+  "hsl(330 90% 65%)", "hsl(270 80% 60%)", "hsl(90 75% 50%)" 
 ];
 
-
-export function BrandBuyboxWinnersDisplay({ brandBuyboxWins, isLoading }: BrandBuyboxWinnersDisplayProps) {
+export function BrandBuyboxWinnersDisplay({ brandBuyboxWins, marketplaceBuyboxWins, isLoading }: BrandBuyboxWinnersDisplayProps) {
+  
   const processedPieData = React.useMemo(() => {
     if (!brandBuyboxWins || brandBuyboxWins.length === 0) return [];
     const sortedWins = [...brandBuyboxWins].sort((a,b) => b.wins - a.wins);
@@ -62,12 +58,17 @@ export function BrandBuyboxWinnersDisplay({ brandBuyboxWins, isLoading }: BrandB
   }, [brandBuyboxWins]);
 
   const brandBarChartConfig = {
-    wins: {
-      label: "Ganhos de Buybox (Marca)",
-      color: "hsl(var(--chart-1))",
-    },
+    wins: { label: "Ganhos de Buybox (Marca)", color: "hsl(var(--chart-1))" },
   } satisfies ChartConfig;
 
+  const marketplaceBarChartData = React.useMemo(() => {
+    if (!marketplaceBuyboxWins) return [];
+    return [...marketplaceBuyboxWins].sort((a,b) => b.wins - a.wins).slice(0, TOP_N_MARKETPLACES_BAR).reverse();
+  }, [marketplaceBuyboxWins]);
+
+  const marketplaceBarChartConfig = {
+    wins: { label: "Ganhos de Buybox (Marketplace)", color: "hsl(var(--chart-2))" },
+  } satisfies ChartConfig;
 
   if (isLoading) {
     return (
@@ -75,38 +76,44 @@ export function BrandBuyboxWinnersDisplay({ brandBuyboxWins, isLoading }: BrandB
         <CardHeader>
           <div className="flex items-center">
             <Tags className="mr-2 h-5 w-5 text-primary" />
-            <Skeleton className="h-6 w-1/2 mb-1" />
+            <Skeleton className="h-6 w-3/4 mb-1" />
           </div>
-          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-4 w-full" />
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <Skeleton className="h-[350px] w-full" />
             <Skeleton className="h-[350px] w-full" />
           </div>
+          <Skeleton className="h-[350px] w-full mt-8" />
         </CardContent>
       </Card>
     );
   }
   
   const noBrandData = !brandBuyboxWins || brandBuyboxWins.length === 0;
+  const noMarketplaceData = !marketplaceBuyboxWins || marketplaceBuyboxWins.length === 0;
 
-  if (noBrandData) {
-    // This state is handled by the parent component in page.tsx for overall "no brand mapping"
+  if (noBrandData && noMarketplaceData) {
+     // This state can be handled by the parent component in page.tsx for overall "no data" or "no mapping"
     return null;
   }
 
   return (
     <Card className="shadow-lg">
       <CardHeader>
-        <CardTitle className="flex items-center"><Tags className="mr-2 h-5 w-5 text-primary" />Vencedores de Buybox por Marca</CardTitle>
+        <CardTitle className="flex items-center"><Tags className="mr-1 h-5 w-5 text-primary" />/<Globe className="ml-1 mr-2 h-5 w-5 text-primary" />Análise de Ganhos de Buybox: Marcas e Marketplaces</CardTitle>
         <CardDescription>
-          Visão gráfica das marcas cujos produtos (SKUs únicos) mais venceram o buybox.
+          Visão gráfica das marcas e marketplaces cujos produtos (SKUs únicos) mais venceram o buybox.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {brandBuyboxWins.length > 0 ? (
-          <div className="space-y-8">
+        {noBrandData && noMarketplaceData ? (
+            <CardDescription>Nenhuma informação de buybox por marca ou marketplace disponível com os filtros atuais ou mapeamentos.</CardDescription>
+        ) : (
+        <div className="space-y-8">
+          {brandBuyboxWins.length > 0 && (
+            <>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <Card>
                   <CardHeader>
@@ -144,13 +151,13 @@ export function BrandBuyboxWinnersDisplay({ brandBuyboxWins, isLoading }: BrandB
                             {processedPieData.map((entry, index) => {
                               const sanitizedKey = entry.marca.replace(/[^a-zA-Z0-9_]/g, '_');
                               return (
-                                <Cell key={`cell-${index}`} fill={`var(--color-${sanitizedKey}, ${COLORS_PIE[index % COLORS_PIE.length]})`} />
+                                <Cell key={`cell-brand-pie-${index}`} fill={`var(--color-${sanitizedKey}, ${COLORS_PIE[index % COLORS_PIE.length]})`} />
                               )
                             })}
                           </Pie>
                           <Legend 
                             iconSize={10} 
-                            wrapperStyle={{fontSize: "12px", fill: "hsl(var(--foreground))"}}
+                            wrapperStyle={{fontSize: "12px"}}
                             formatter={(value, entry) => {
                                const originalEntry = processedPieData.find(p => p.name === value);
                                return (
@@ -197,9 +204,52 @@ export function BrandBuyboxWinnersDisplay({ brandBuyboxWins, isLoading }: BrandB
                   </CardContent>
                 </Card>
               </div>
-          </div>
-        ) : (
-          <CardDescription>Nenhuma informação de buybox por marca disponível com os filtros atuais.</CardDescription>
+            </>
+          )}
+          {!noBrandData && brandBuyboxWins.length === 0 && (
+              <CardDescription className="text-center py-4">Nenhuma informação de buybox por marca para os filtros e mapeamentos atuais.</CardDescription>
+          )}
+
+          {marketplaceBuyboxWins.length > 0 && (
+            <Card className="mt-8">
+              <CardHeader>
+                <CardTitle className="text-base sm:text-lg flex items-center">
+                  <Globe className="mr-2 h-5 w-5 text-primary" />
+                  Top {marketplaceBarChartData.length} Marketplaces por Ganhos de Buybox
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="h-[250px] sm:h-[300px]">
+                <ChartContainer config={marketplaceBarChartConfig} className="w-full h-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={marketplaceBarChartData} layout="vertical" margin={{ right: 35, left: 20, top: 5, bottom: 5 }}>
+                      <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                      <YAxis 
+                        dataKey="marketplace" 
+                        type="category" 
+                        width={130} 
+                        interval={0} 
+                        stroke="hsl(var(--muted-foreground))" 
+                        fontSize={12}
+                        tickFormatter={(value) => value.length > 15 ? `${value.substring(0,13)}...` : value}
+                      />
+                      <ChartTooltip
+                        cursor={{ fill: "hsl(var(--muted))" }}
+                        content={<ChartTooltipContent indicator="dot" />}
+                      />
+                      <Bar dataKey="wins" fill="var(--color-wins)" radius={[0, 4, 4, 0]} barSize={marketplaceBarChartData.length < 4 ? 35 : undefined}>
+                        <LabelList dataKey="wins" position="right" offset={8} className="fill-foreground" fontSize={12} />
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+          )}
+           {!noMarketplaceData && marketplaceBuyboxWins.length === 0 && (
+              <CardDescription className="text-center py-4 mt-4">Nenhuma informação de buybox por marketplace para os filtros atuais.</CardDescription>
+          )}
+
+        </div>
         )}
       </CardContent>
     </Card>

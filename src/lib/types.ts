@@ -70,11 +70,6 @@ export interface ProductWinningBuyboxInfo {
   marca?: string;
 }
 
-export interface SellerMarketplaceWinSummary {
-  marketplace: string;
-  wins: number; // Number of unique SKUs the seller won in this marketplace
-}
-
 export interface SellerAnalysisMetrics {
   sellerName: string;
   totalProductsListed: number;
@@ -82,7 +77,7 @@ export interface SellerAnalysisMetrics {
   buyboxesLost: number;
   productsLosingBuybox: ProductLosingBuyboxInfo[];
   productsWinningBuybox: ProductWinningBuyboxInfo[];
-  marketplaceWins: SellerMarketplaceWinSummary[];
+  // marketplaceWins: SellerMarketplaceWinSummary[]; // Removed per user request to consolidate marketplace chart elsewhere
   lastUpdateTime: string | null;
 }
 
@@ -127,7 +122,13 @@ export interface BrandBuyboxWinSummary {
   wins: number; // Total unique SKUs this brand is winning
 }
 
+export interface MarketplaceBuyboxWinSummary {
+  marketplace: string;
+  wins: number; // Total unique SKUs won in this marketplace overall
+}
+
 export interface InternalSkuMapping {
   internalSku?: string;
   marca?: string;
 }
+

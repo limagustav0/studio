@@ -1,9 +1,9 @@
 
-import type { SellerAnalysisMetrics, ProductLosingBuyboxInfo, ProductWinningBuyboxInfo, SellerMarketplaceWinSummary } from '@/lib/types';
+import type { SellerAnalysisMetrics, ProductLosingBuyboxInfo, ProductWinningBuyboxInfo } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TrendingUp, TrendingDown, ListChecks, PackageSearch, AlertTriangle, Info, CheckCircle2, Clock, Users, Globe, BarChartHorizontalBig } from 'lucide-react';
+import { TrendingUp, TrendingDown, ListChecks, PackageSearch, AlertTriangle, Info, CheckCircle2, Clock, Users } from 'lucide-react';
 import Image from 'next/image';
 import { format as formatDate, parseISO, compareDesc } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -15,8 +15,6 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import * as React from 'react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LabelList } from 'recharts';
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 
 interface SellerPerformanceDashboardProps {
   performanceMetricsList: SellerAnalysisMetrics[];
@@ -24,8 +22,6 @@ interface SellerPerformanceDashboardProps {
   selectedSellersCount: number;
   selectedSellerNames: string[];
 }
-
-const TOP_N_MARKETPLACES_SELLER_WINS = 5;
 
 export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, selectedSellersCount, selectedSellerNames }: SellerPerformanceDashboardProps) {
   const formatLastUpdateTime = (isoDateString: string | null) => {
@@ -61,29 +57,6 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
     return <span className="text-red-600">Perdendo por R$ {Math.abs(diff).toFixed(2)}</span>;
   };
 
-  const consolidatedMarketplaceWins = React.useMemo(() => {
-    if (!performanceMetricsList || performanceMetricsList.length === 0) return [];
-    const aggregated: Record<string, number> = {};
-    performanceMetricsList.forEach(sellerMetrics => {
-      sellerMetrics.marketplaceWins.forEach(mpWin => {
-        aggregated[mpWin.marketplace] = (aggregated[mpWin.marketplace] || 0) + mpWin.wins;
-      });
-    });
-    return Object.entries(aggregated)
-      .map(([marketplace, wins]) => ({ marketplace, wins }))
-      .sort((a, b) => b.wins - a.wins || a.marketplace.localeCompare(b.marketplace))
-      .slice(0, TOP_N_MARKETPLACES_SELLER_WINS)
-      .reverse(); // For horizontal bar chart
-  }, [performanceMetricsList]);
-
-  const sellerMarketplaceWinsChartConfig: ChartConfig = React.useMemo(() => ({
-    wins: {
-      label: `Buyboxes Ganhos (${selectedSellersCount > 1 ? 'Consolidado' : selectedSellerNames[0] || 'Vendedor'})`,
-      color: "hsl(var(--chart-2))",
-    },
-  }), [selectedSellersCount, selectedSellerNames]);
-
-
   if (isLoading) {
     return (
       <Card className="shadow-lg w-full">
@@ -103,7 +76,6 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
               </Card>
             ))}
           </div>
-          <div><Skeleton className="h-6 w-1/2 mb-4" /><Skeleton className="h-56 w-full" /></div> {/* Marketplace wins skeleton */}
           <div><Skeleton className="h-6 w-1/2 mb-4" /><Skeleton className="h-40 w-full" /></div>
           <div><Skeleton className="h-6 w-1/2 mb-4 mt-6" /><Skeleton className="h-40 w-full" /></div>
         </CardContent>
@@ -197,45 +169,6 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
           <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Buyboxes Perdidos (SKUs)</CardTitle><TrendingDown className="h-5 w-5 text-red-600" /></CardHeader><CardContent><div className="text-2xl font-bold">{consolidatedBuyboxesLost}</div><p className="text-xs text-muted-foreground">SKUs onde perde para outro</p></CardContent></Card>
         </div>
         
-        {consolidatedMarketplaceWins.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base sm:text-lg flex items-center">
-                <Globe className="mr-2 h-5 w-5 text-primary" />
-                Top {consolidatedMarketplaceWins.length} Marketplaces por Ganhos de Buybox 
-                ({selectedSellersCount > 1 ? 'Consolidado' : selectedSellerNames[0] || 'Vendedor'})
-              </CardTitle>
-              <CardDescription>Marketplaces onde o(s) vendedor(es) selecionado(s) mais ganharam buyboxes.</CardDescription>
-            </CardHeader>
-            <CardContent className="h-[250px] sm:h-[300px]">
-              <ChartContainer config={sellerMarketplaceWinsChartConfig} className="w-full h-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={consolidatedMarketplaceWins} layout="vertical" margin={{ right: 35, left: 20, top: 5, bottom: 5 }}>
-                    <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <YAxis 
-                      dataKey="marketplace" 
-                      type="category" 
-                      width={130} 
-                      interval={0} 
-                      stroke="hsl(var(--muted-foreground))" 
-                      fontSize={12}
-                      tickFormatter={(value) => value.length > 15 ? `${value.substring(0,13)}...` : value}
-                    />
-                    <ChartTooltip
-                      cursor={{ fill: "hsl(var(--muted))" }}
-                      content={<ChartTooltipContent indicator="dot" />}
-                    />
-                    <Bar dataKey="wins" fill="var(--color-wins)" radius={[0, 4, 4, 0]} barSize={consolidatedMarketplaceWins.length < 4 ? 35 : undefined}>
-                      <LabelList dataKey="wins" position="right" offset={8} className="fill-foreground" fontSize={12} />
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-            </CardContent>
-          </Card>
-        )}
-
-
         <Accordion type="multiple" className="w-full" defaultValue={['losing-buybox', 'winning-buybox']}>
           <AccordionItem value="losing-buybox">
             <AccordionTrigger className="text-lg font-semibold hover:no-underline p-0 py-3 data-[state=open]:pb-2">
@@ -278,7 +211,7 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
             </AccordionContent>
           </AccordionItem>
 
-          <AccordionItem value="winning-buybox" className="mt-1 border-t pt-1"> {/* Adjusted spacing for better visual flow */}
+          <AccordionItem value="winning-buybox" className="mt-1 border-t pt-1"> 
             <AccordionTrigger className="text-lg font-semibold hover:no-underline p-0 py-3 data-[state=open]:pb-2">
               <div className="flex items-center">
                 <CheckCircle2 className="mr-2 h-5 w-5 text-green-600" />
@@ -324,3 +257,4 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
     </Card>
   );
 }
+
