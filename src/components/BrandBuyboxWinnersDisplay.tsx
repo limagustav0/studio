@@ -4,13 +4,63 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tags } from 'lucide-react';
+import * as React from 'react';
+import { PieChart, Pie, Cell, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, LabelList } from 'recharts';
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 
 interface BrandBuyboxWinnersDisplayProps {
   brandBuyboxWins: BrandBuyboxWinSummary[];
   isLoading: boolean;
 }
 
+const TOP_N_BRANDS_PIE = 5;
+const TOP_N_BRANDS_BAR = 10;
+const COLORS_PIE = [
+  "hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))",
+  "hsl(var(--chart-4))", "hsl(var(--chart-5))", "hsl(var(--accent))"
+];
+
+
 export function BrandBuyboxWinnersDisplay({ brandBuyboxWins, isLoading }: BrandBuyboxWinnersDisplayProps) {
+  const processedPieData = React.useMemo(() => {
+    if (!brandBuyboxWins || brandBuyboxWins.length === 0) return [];
+    const sortedWins = [...brandBuyboxWins].sort((a,b) => b.wins - a.wins);
+    if (sortedWins.length <= TOP_N_BRANDS_PIE) {
+      return sortedWins;
+    }
+    const topN = sortedWins.slice(0, TOP_N_BRANDS_PIE);
+    const othersWins = sortedWins.slice(TOP_N_BRANDS_PIE).reduce((sum, item) => sum + item.wins, 0);
+    if (othersWins > 0) {
+      return [...topN, { marca: "Outras", wins: othersWins }];
+    }
+    return topN;
+  }, [brandBuyboxWins]);
+
+  const pieChartConfig = React.useMemo(() => {
+    const config: ChartConfig = {};
+    processedPieData.forEach((item, index) => {
+      const sanitizedKey = item.marca.replace(/[^a-zA-Z0-9_]/g, '_'); // Sanitize key
+      config[sanitizedKey] = {
+        label: item.marca,
+        color: COLORS_PIE[index % COLORS_PIE.length],
+      };
+    });
+    return config;
+  }, [processedPieData]);
+
+  const barChartData = React.useMemo(() => {
+    if (!brandBuyboxWins) return [];
+    return [...brandBuyboxWins].sort((a,b) => b.wins - a.wins).slice(0, TOP_N_BRANDS_BAR).reverse();
+  }, [brandBuyboxWins]);
+
+  const barChartConfig = {
+    wins: {
+      label: "Ganhos de Buybox",
+      color: "hsl(var(--chart-1))",
+    },
+  } satisfies ChartConfig;
+
+
   if (isLoading) {
     return (
       <Card className="shadow-lg">
@@ -21,13 +71,12 @@ export function BrandBuyboxWinnersDisplay({ brandBuyboxWins, isLoading }: BrandB
           </div>
           <Skeleton className="h-4 w-3/4" />
         </CardHeader>
-        <CardContent>
-          {[...Array(3)].map((_, i) => (
-            <div key={`skel-brand-bb-${i}`} className="flex justify-between items-center py-2 border-b last:border-b-0">
-              <Skeleton className="h-5 w-1/3" />
-              <Skeleton className="h-5 w-1/4" />
-            </div>
-          ))}
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <Skeleton className="h-[350px] w-full" />
+            <Skeleton className="h-[350px] w-full" />
+          </div>
+          <Skeleton className="h-40 w-full" />
         </CardContent>
       </Card>
     );
@@ -48,26 +97,127 @@ export function BrandBuyboxWinnersDisplay({ brandBuyboxWins, isLoading }: BrandB
     <Card className="shadow-lg">
       <CardHeader>
         <CardTitle className="flex items-center"><Tags className="mr-2 h-5 w-5 text-primary" />Vencedores de Buybox por Marca</CardTitle>
-        <CardDescription>Marcas cujos produtos (SKUs únicos) mais venceram o buybox.</CardDescription>
+        <CardDescription>
+          Visão gráfica e tabular das marcas cujos produtos (SKUs únicos) mais venceram o buybox.
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Marca</TableHead>
-              <TableHead className="text-right">SKUs Únicos com Buybox Vencido</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {brandBuyboxWins.map((winner) => (
-              <TableRow key={winner.marca}>
-                <TableCell className="font-medium">{winner.marca}</TableCell>
-                <TableCell className="text-right">{winner.wins}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        {brandBuyboxWins.length > 0 ? (
+          <div className="space-y-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base sm:text-lg">Distribuição de Ganhos (Top {TOP_N_BRANDS_PIE}{brandBuyboxWins.length > TOP_N_BRANDS_PIE && processedPieData.find(p=>p.marca === "Outras") ? " + Outras" : ""})</CardTitle>
+                </CardHeader>
+                <CardContent className="h-[300px] sm:h-[350px]">
+                  <ChartContainer config={pieChartConfig} className="w-full h-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <ChartTooltip 
+                          cursor={{ fill: "hsl(var(--muted))" }}
+                          content={<ChartTooltipContent hideLabel nameKey="marca" />} 
+                        />
+                        <Pie 
+                          data={processedPieData} 
+                          dataKey="wins" 
+                          nameKey="marca" 
+                          cx="50%" 
+                          cy="50%" 
+                          outerRadius="80%" 
+                          labelLine={false}
+                          label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, marca }) => {
+                            const RADIAN = Math.PI / 180;
+                            const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+                            const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                            const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                            if ((percent * 100) < 5) return null; // Hide label for small slices
+                            return (
+                              <text x={x} y={y} fill="hsl(var(--primary-foreground))" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize={12}>
+                                {`${processedPieData[index].marca} (${(percent * 100).toFixed(0)}%)`}
+                              </text>
+                            );
+                          }}
+                        >
+                          {processedPieData.map((entry, index) => {
+                            const sanitizedKey = entry.marca.replace(/[^a-zA-Z0-9_]/g, '_');
+                            return (
+                              <Cell key={`cell-${index}`} fill={`var(--color-${sanitizedKey}, ${COLORS_PIE[index % COLORS_PIE.length]})`} />
+                            )
+                          })}
+                        </Pie>
+                        <Legend 
+                          iconSize={10} 
+                          wrapperStyle={{fontSize: "12px"}}
+                          formatter={(value, entry) => {
+                             const originalEntry = processedPieData.find(p => p.marca === value);
+                             return originalEntry ? `${value} (${originalEntry.wins})` : value;
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base sm:text-lg">Top {barChartData.length} Marcas por Ganhos</CardTitle>
+                </CardHeader>
+                <CardContent className="h-[300px] sm:h-[350px]">
+                  <ChartContainer config={barChartConfig} className="w-full h-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={barChartData} layout="vertical" margin={{ right: 35, left: 20, top: 5, bottom: 5 }}>
+                        <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                        <YAxis 
+                          dataKey="marca" 
+                          type="category" 
+                          width={130} 
+                          interval={0} 
+                          stroke="hsl(var(--muted-foreground))" 
+                          fontSize={12}
+                          tickFormatter={(value) => value.length > 15 ? `${value.substring(0,13)}...` : value}
+                        />
+                        <ChartTooltip
+                          cursor={{ fill: "hsl(var(--muted))" }}
+                          content={<ChartTooltipContent indicator="dot" />}
+                        />
+                        <Bar dataKey="wins" fill="var(--color-wins)" radius={[0, 4, 4, 0]} barSize={barChartData.length < 5 ? 40 : undefined}>
+                           <LabelList dataKey="wins" position="right" offset={8} className="fill-foreground" fontSize={12} />
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="pt-6">
+              <h3 className="text-md font-semibold mb-2 text-center sm:text-left">Dados Detalhados Completos</h3>
+              <div className="overflow-x-auto rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Marca</TableHead>
+                      <TableHead className="text-right">SKUs Únicos com Buybox Vencido</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {brandBuyboxWins.map((winner) => (
+                      <TableRow key={winner.marca}>
+                        <TableCell className="font-medium">{winner.marca}</TableCell>
+                        <TableCell className="text-right">{winner.wins}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <CardDescription>Nenhuma informação de buybox por marca disponível ou nenhuma marca vencedora encontrada com os filtros atuais.</CardDescription>
+        )}
       </CardContent>
     </Card>
   );
 }
+
