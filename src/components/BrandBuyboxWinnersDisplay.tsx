@@ -1,7 +1,6 @@
 
 import type { BrandBuyboxWinSummary } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tags } from 'lucide-react';
 import * as React from 'react';
@@ -16,8 +15,16 @@ interface BrandBuyboxWinnersDisplayProps {
 const TOP_N_BRANDS_PIE = 5;
 const TOP_N_BRANDS_BAR = 10;
 const COLORS_PIE = [
-  "hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))",
-  "hsl(var(--chart-4))", "hsl(var(--chart-5))", "hsl(var(--accent))"
+  "hsl(var(--chart-1))",   // Bright Cyan
+  "hsl(var(--chart-2))",   // Bright Magenta
+  "hsl(var(--chart-3))",   // Darker Cyan
+  "hsl(60 90% 50%)",      // Bright Yellow
+  "hsl(var(--chart-4))",   // Darker Magenta
+  "hsl(25 95% 53%)",      // Bright Orange
+  "hsl(var(--chart-5))",   // Muted Gray-Blue
+  "hsl(150 85% 45%)",     // Bright Green
+  "hsl(200 90% 55%)",     // Bright Blue
+  "hsl(330 90% 65%)",     // Bright Pink
 ];
 
 
@@ -82,14 +89,8 @@ export function BrandBuyboxWinnersDisplay({ brandBuyboxWins, isLoading }: BrandB
   }
   
   if (!brandBuyboxWins || brandBuyboxWins.length === 0) {
-    return (
-      <Card className="shadow-lg">
-        <CardHeader>
-          <CardTitle className="flex items-center"><Tags className="mr-2 h-5 w-5 text-primary" />Vencedores de Buybox por Marca</CardTitle>
-          <CardDescription>Nenhuma informação de buybox por marca disponível ou nenhuma marca vencedora encontrada com os filtros atuais.</CardDescription>
-        </CardHeader>
-      </Card>
-    );
+    // This state is handled by the parent component in page.tsx
+    return null;
   }
 
   return (
@@ -146,10 +147,16 @@ export function BrandBuyboxWinnersDisplay({ brandBuyboxWins, isLoading }: BrandB
                         </Pie>
                         <Legend 
                           iconSize={10} 
-                          wrapperStyle={{fontSize: "12px"}}
+                          wrapperStyle={{fontSize: "12px", color: "hsl(var(--foreground))"}}
                           formatter={(value, entry) => {
                              const originalEntry = processedPieData.find(p => p.marca === value);
-                             return originalEntry ? `${value} (${originalEntry.wins})` : value;
+                             const colorIndex = processedPieData.findIndex(p => p.marca === value);
+                             const cellColor = COLORS_PIE[colorIndex % COLORS_PIE.length];
+                             return (
+                                <span style={{ color: "hsl(var(--foreground))" }}>
+                                  {originalEntry ? `${value} (${originalEntry.wins})` : value}
+                                </span>
+                              );
                           }}
                         />
                       </PieChart>
