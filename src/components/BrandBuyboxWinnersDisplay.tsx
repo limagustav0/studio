@@ -76,7 +76,6 @@ export function BrandBuyboxWinnersDisplay({ brandBuyboxWins, isLoading }: BrandB
             <Skeleton className="h-[350px] w-full" />
             <Skeleton className="h-[350px] w-full" />
           </div>
-          <Skeleton className="h-40 w-full" />
         </CardContent>
       </Card>
     );
@@ -98,7 +97,7 @@ export function BrandBuyboxWinnersDisplay({ brandBuyboxWins, isLoading }: BrandB
       <CardHeader>
         <CardTitle className="flex items-center"><Tags className="mr-2 h-5 w-5 text-primary" />Vencedores de Buybox por Marca</CardTitle>
         <CardDescription>
-          Visão gráfica e tabular das marcas cujos produtos (SKUs únicos) mais venceram o buybox.
+          Visão gráfica das marcas cujos produtos (SKUs únicos) mais venceram o buybox.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -190,28 +189,6 @@ export function BrandBuyboxWinnersDisplay({ brandBuyboxWins, isLoading }: BrandB
                 </CardContent>
               </Card>
             </div>
-
-            <div className="pt-6">
-              <h3 className="text-md font-semibold mb-2 text-center sm:text-left">Dados Detalhados Completos</h3>
-              <div className="overflow-x-auto rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Marca</TableHead>
-                      <TableHead className="text-right">SKUs Únicos com Buybox Vencido</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {brandBuyboxWins.map((winner) => (
-                      <TableRow key={winner.marca}>
-                        <TableCell className="font-medium">{winner.marca}</TableCell>
-                        <TableCell className="text-right">{winner.wins}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
           </div>
         ) : (
           <CardDescription>Nenhuma informação de buybox por marca disponível ou nenhuma marca vencedora encontrada com os filtros atuais.</CardDescription>
@@ -220,4 +197,3 @@ export function BrandBuyboxWinnersDisplay({ brandBuyboxWins, isLoading }: BrandB
     </Card>
   );
 }
-
