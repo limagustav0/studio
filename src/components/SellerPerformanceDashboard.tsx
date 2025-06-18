@@ -3,11 +3,17 @@ import type { SellerAnalysisMetrics, ProductLosingBuyboxInfo, ProductWinningBuyb
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TrendingUp, TrendingDown, ListChecks, PackageSearch, AlertTriangle, Info, CheckCircle2, Clock, Users, Landmark } from 'lucide-react';
+import { TrendingUp, TrendingDown, ListChecks, PackageSearch, AlertTriangle, Info, CheckCircle2, Clock, Users } from 'lucide-react';
 import Image from 'next/image';
 import { format as formatDate, parseISO, compareDesc } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 interface SellerPerformanceDashboardProps {
   performanceMetricsList: SellerAnalysisMetrics[];
@@ -98,6 +104,7 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
       <Card className="shadow-lg w-full">
         <CardHeader>
           <CardTitle className="flex items-center"><PackageSearch className="mr-2 h-5 w-5 text-primary" />Análise de Desempenho Consolidada</CardTitle>
+          {performanceMetricsList[0]?.lastUpdateTime && (<p className="text-xs text-muted-foreground flex items-center"><Clock className="mr-1.5 h-3 w-3" />Dados (mais recentes) atualizados em: {formatLastUpdateTime(performanceMetricsList[0]?.lastUpdateTime)}</p>)}
           <CardDescription>Não foi possível carregar os dados de desempenho para o(s) vendedor(es) selecionado(s) ou não há dados disponíveis.</CardDescription>
         </CardHeader>
          <CardContent>
@@ -162,70 +169,90 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
           <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Buyboxes Perdidos (SKUs)</CardTitle><TrendingDown className="h-5 w-5 text-red-600" /></CardHeader><CardContent><div className="text-2xl font-bold">{consolidatedBuyboxesLost}</div><p className="text-xs text-muted-foreground">SKUs onde perde para outro</p></CardContent></Card>
         </div>
 
-        {allLosingProducts.length > 0 && (
-          <div>
-            <h3 className="text-lg font-semibold mb-3 flex items-center"><AlertTriangle className="mr-2 h-5 w-5 text-destructive" />Produtos Perdendo Buybox</h3>
-            <div className="overflow-x-auto rounded-md border">
-              <Table>
-                <TableHeader><TableRow><TableHead className="w-[60px] hidden sm:table-cell">Img</TableHead><TableHead>Produto (SKU/Marca)</TableHead><TableHead>Vendedor (Mktplace)</TableHead><TableHead className="text-right">Preços</TableHead><TableHead>Vencedor (Dif.)</TableHead><TableHead className="text-right">Raspagem</TableHead></TableRow></TableHeader>
-                <TableBody>
-                  {allLosingProducts.map((item, idx) => (
-                    <TableRow key={`losing-${item.sku}-${item.sellerName}-${item.marketplace}-${idx}`}>
-                      <TableCell className="hidden sm:table-cell"><Image src={item.imagem || "https://placehold.co/50x50.png"} alt={item.descricao} width={50} height={50} className="rounded" data-ai-hint="product item small"/></TableCell>
-                      <TableCell>
-                        <div className="font-medium max-w-xs truncate" title={item.descricao}>{item.descricao}</div>
-                        <div className="text-xs text-muted-foreground">SKU: {item.sku}</div>
-                        {item.internalSku && (<div className="text-xs text-muted-foreground mt-0.5">Interno: {item.internalSku}</div>)}
-                        {item.marca && (<Badge variant="outline" className="text-xs mt-1">{item.marca}</Badge>)}
-                      </TableCell>
-                      <TableCell><div className="font-medium max-w-xs truncate" title={item.sellerName}>{item.sellerName}</div><div className="text-xs text-muted-foreground max-w-xs truncate" title={item.marketplace}>{item.marketplace}</div></TableCell>
-                      <TableCell className="text-right"><div><span className="text-xs text-muted-foreground mr-1">Vencedor:</span><span className="font-semibold text-green-600">R$ {item.winningPrice.toFixed(2)}</span></div><div><span className="text-xs text-muted-foreground mr-1">Seu:</span><span className="font-semibold text-blue-600">R$ {item.sellerPrice.toFixed(2)}</span></div></TableCell>
-                      <TableCell><div className="font-medium max-w-[150px] truncate" title={item.winningSeller}>{item.winningSeller}</div><div className="text-xs text-red-600">Perdendo por R$ {item.priceDifference.toFixed(2)}</div></TableCell>
-                      <TableCell className="text-right text-xs text-muted-foreground">{formatTableCellDateTime(item.data_hora)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        )}
-        {allLosingProducts.length === 0 && consolidatedBuyboxesLost > 0 && (<p className="text-sm text-muted-foreground mt-4">Detalhes de produtos perdendo buybox não disponíveis.</p>)}
-        {consolidatedBuyboxesLost === 0 && consolidatedTotalProductsListed > 0 && (<p className="text-sm text-green-600 font-medium mt-4">Nenhum vendedor selecionado está perdendo buyboxes!</p>)}
-
-        <div className="mt-8 pt-6 border-t">
-            <h3 className="text-lg font-semibold mb-3 flex items-center"><CheckCircle2 className="mr-2 h-5 w-5 text-green-600" />Produtos Ganhando Buybox</h3>
-            {allWinningProducts.length > 0 ? (
-              <div className="overflow-x-auto rounded-md border">
-                <Table>
-                  <TableHeader><TableRow><TableHead className="w-[60px] hidden sm:table-cell">Img</TableHead><TableHead>Produto (SKU/Marca)</TableHead><TableHead>Vendedor (Mktplace)</TableHead><TableHead className="text-right">Seu Preço (Margem)</TableHead><TableHead>Próx. Concorrente</TableHead><TableHead className="text-right">Raspagem</TableHead></TableRow></TableHeader>
-                  <TableBody>
-                    {allWinningProducts.map((item, idx) => (
-                      <TableRow key={`winning-${item.sku}-${item.sellerName}-${item.marketplace}-${idx}`}>
-                        <TableCell className="hidden sm:table-cell"><Image src={item.imagem || "https://placehold.co/50x50.png"} alt={item.descricao} width={50} height={50} className="rounded" data-ai-hint="product item small"/></TableCell>
-                        <TableCell>
-                          <div className="font-medium max-w-xs truncate" title={item.descricao}>{item.descricao}</div>
-                          <div className="text-xs text-muted-foreground">SKU: {item.sku}</div>
-                          {item.internalSku && (<div className="text-xs text-muted-foreground mt-0.5">Interno: {item.internalSku}</div>)}
-                          {item.marca && (<Badge variant="outline" className="text-xs mt-1">{item.marca}</Badge>)}
-                        </TableCell>
-                        <TableCell><div className="font-medium max-w-xs truncate" title={item.sellerName}>{item.sellerName}</div><div className="text-xs text-muted-foreground max-w-xs truncate" title={item.marketplace}>{item.marketplace}</div></TableCell>
-                        <TableCell className="text-right"><div className="font-semibold text-green-600">R$ {item.sellerPrice.toFixed(2)}</div><div className="text-xs">{formatDifference(item.priceDifferenceToNext)}</div></TableCell>
-                        <TableCell>
-                           <div className="max-w-[150px] truncate" title={item.nextCompetitorSellerName || undefined}>{item.priceDifferenceToNext !== null && item.priceDifferenceToNext !== undefined ? item.nextCompetitorSellerName || 'N/A' : 'Sem concorrente'}</div>
-                           {(item.priceDifferenceToNext !== null && item.priceDifferenceToNext !== undefined && item.nextCompetitorSellerName && (item.sellerPrice + item.priceDifferenceToNext) > 0) && (<div className="text-xs text-muted-foreground">R$ {(item.sellerPrice + item.priceDifferenceToNext).toFixed(2)}</div>)}
-                        </TableCell>
-                        <TableCell className="text-right text-xs text-muted-foreground">{formatTableCellDateTime(item.data_hora)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+        <Accordion type="multiple" className="w-full" defaultValue={['losing-buybox', 'winning-buybox']}>
+          <AccordionItem value="losing-buybox">
+            <AccordionTrigger className="text-lg font-semibold hover:no-underline p-0 py-3 data-[state=open]:pb-2">
+              <div className="flex items-center">
+                <AlertTriangle className="mr-2 h-5 w-5 text-destructive" />
+                Produtos Perdendo Buybox
               </div>
-            ) : consolidatedBuyboxesWon > 0 ? (
-              <p className="text-sm text-muted-foreground mt-2">Ganhando {consolidatedBuyboxesWon} buybox(es), mas detalhes não disponíveis (sem concorrência direta ou erro).</p>
-            ) : (
-              <p className="text-sm text-red-600 font-medium mt-2">Nenhum vendedor selecionado ganhando buyboxes.</p>
-            )}
-        </div>
+            </AccordionTrigger>
+            <AccordionContent className="pt-2 pb-0">
+              {allLosingProducts.length > 0 ? (
+                <div className="overflow-x-auto rounded-md border">
+                  <Table>
+                    <TableHeader><TableRow><TableHead className="w-[60px] hidden sm:table-cell">Img</TableHead><TableHead>Produto (SKU/Marca)</TableHead><TableHead>Vendedor (Mktplace)</TableHead><TableHead className="text-right">Preços</TableHead><TableHead>Vencedor (Dif.)</TableHead><TableHead className="text-right">Raspagem</TableHead></TableRow></TableHeader>
+                    <TableBody>
+                      {allLosingProducts.map((item, idx) => (
+                        <TableRow key={`losing-${item.sku}-${item.sellerName}-${item.marketplace}-${idx}`}>
+                          <TableCell className="hidden sm:table-cell"><Image src={item.imagem || "https://placehold.co/50x50.png"} alt={item.descricao} width={50} height={50} className="rounded" data-ai-hint="product item small"/></TableCell>
+                          <TableCell>
+                            <div className="font-medium max-w-xs truncate" title={item.descricao}>{item.descricao}</div>
+                            <div className="text-xs text-muted-foreground">SKU: {item.sku}</div>
+                            {item.internalSku && (<div className="text-xs text-muted-foreground mt-0.5">Interno: {item.internalSku}</div>)}
+                            {item.marca && (<Badge variant="outline" className="text-xs mt-1">{item.marca}</Badge>)}
+                          </TableCell>
+                          <TableCell><div className="font-medium max-w-xs truncate" title={item.sellerName}>{item.sellerName}</div><div className="text-xs text-muted-foreground max-w-xs truncate" title={item.marketplace}>{item.marketplace}</div></TableCell>
+                          <TableCell className="text-right"><div><span className="text-xs text-muted-foreground mr-1">Vencedor:</span><span className="font-semibold text-green-600">R$ {item.winningPrice.toFixed(2)}</span></div><div><span className="text-xs text-muted-foreground mr-1">Seu:</span><span className="font-semibold text-blue-600">R$ {item.sellerPrice.toFixed(2)}</span></div></TableCell>
+                          <TableCell><div className="font-medium max-w-[150px] truncate" title={item.winningSeller}>{item.winningSeller}</div><div className="text-xs text-red-600">Perdendo por R$ {item.priceDifference.toFixed(2)}</div></TableCell>
+                          <TableCell className="text-right text-xs text-muted-foreground">{formatTableCellDateTime(item.data_hora)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : consolidatedBuyboxesLost > 0 ? (
+                <p className="text-sm text-muted-foreground mt-2">Detalhes de produtos perdendo buybox não disponíveis.</p>
+              ) : consolidatedTotalProductsListed > 0 ? (
+                <p className="text-sm text-green-600 font-medium mt-2">Nenhum vendedor selecionado está perdendo buyboxes!</p>
+              ) : (
+                <p className="text-sm text-muted-foreground mt-2">Nenhuma informação de buybox perdido disponível.</p>
+              )}
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="winning-buybox" className="mt-1 border-t pt-1"> {/* Adjusted spacing for better visual flow */}
+            <AccordionTrigger className="text-lg font-semibold hover:no-underline p-0 py-3 data-[state=open]:pb-2">
+              <div className="flex items-center">
+                <CheckCircle2 className="mr-2 h-5 w-5 text-green-600" />
+                Produtos Ganhando Buybox
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="pt-2 pb-0">
+              {allWinningProducts.length > 0 ? (
+                <div className="overflow-x-auto rounded-md border">
+                  <Table>
+                    <TableHeader><TableRow><TableHead className="w-[60px] hidden sm:table-cell">Img</TableHead><TableHead>Produto (SKU/Marca)</TableHead><TableHead>Vendedor (Mktplace)</TableHead><TableHead className="text-right">Seu Preço (Margem)</TableHead><TableHead>Próx. Concorrente</TableHead><TableHead className="text-right">Raspagem</TableHead></TableRow></TableHeader>
+                    <TableBody>
+                      {allWinningProducts.map((item, idx) => (
+                        <TableRow key={`winning-${item.sku}-${item.sellerName}-${item.marketplace}-${idx}`}>
+                          <TableCell className="hidden sm:table-cell"><Image src={item.imagem || "https://placehold.co/50x50.png"} alt={item.descricao} width={50} height={50} className="rounded" data-ai-hint="product item small"/></TableCell>
+                          <TableCell>
+                            <div className="font-medium max-w-xs truncate" title={item.descricao}>{item.descricao}</div>
+                            <div className="text-xs text-muted-foreground">SKU: {item.sku}</div>
+                            {item.internalSku && (<div className="text-xs text-muted-foreground mt-0.5">Interno: {item.internalSku}</div>)}
+                            {item.marca && (<Badge variant="outline" className="text-xs mt-1">{item.marca}</Badge>)}
+                          </TableCell>
+                          <TableCell><div className="font-medium max-w-xs truncate" title={item.sellerName}>{item.sellerName}</div><div className="text-xs text-muted-foreground max-w-xs truncate" title={item.marketplace}>{item.marketplace}</div></TableCell>
+                          <TableCell className="text-right"><div className="font-semibold text-green-600">R$ {item.sellerPrice.toFixed(2)}</div><div className="text-xs">{formatDifference(item.priceDifferenceToNext)}</div></TableCell>
+                          <TableCell>
+                            <div className="max-w-[150px] truncate" title={item.nextCompetitorSellerName || undefined}>{item.priceDifferenceToNext !== null && item.priceDifferenceToNext !== undefined ? item.nextCompetitorSellerName || 'N/A' : 'Sem concorrente'}</div>
+                            {(item.priceDifferenceToNext !== null && item.priceDifferenceToNext !== undefined && item.nextCompetitorSellerName && (item.sellerPrice + item.priceDifferenceToNext) > 0) && (<div className="text-xs text-muted-foreground">R$ {(item.sellerPrice + item.priceDifferenceToNext).toFixed(2)}</div>)}
+                          </TableCell>
+                          <TableCell className="text-right text-xs text-muted-foreground">{formatTableCellDateTime(item.data_hora)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : consolidatedBuyboxesWon > 0 ? (
+                <p className="text-sm text-muted-foreground mt-2">Ganhando {consolidatedBuyboxesWon} buybox(es), mas detalhes não disponíveis (sem concorrência direta ou erro).</p>
+              ) : (
+                <p className="text-sm text-red-600 font-medium mt-2">Nenhum vendedor selecionado ganhando buyboxes.</p>
+              )}
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       </CardContent>
     </Card>
   );
