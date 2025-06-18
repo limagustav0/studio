@@ -52,7 +52,7 @@ export interface ProductLosingBuyboxInfo {
   priceDifference: number;
   marketplace: string;
   internalSku?: string;
-  marca?: string; // Added marca
+  marca?: string;
 }
 
 export interface ProductWinningBuyboxInfo {
@@ -67,7 +67,7 @@ export interface ProductWinningBuyboxInfo {
   nextCompetitorSellerName?: string | null; // Name of the seller with the next closest price
   marketplace: string;
   internalSku?: string;
-  marca?: string; // Added marca
+  marca?: string;
 }
 
 export interface SellerAnalysisMetrics {
@@ -90,7 +90,7 @@ export interface UniqueProductSummary {
   minPrice: number;
   maxPrice: number;
   internalSku?: string;
-  marca?: string; // Added marca
+  marca?: string;
 }
 
 // Types for PriceChangeSellersDisplay
@@ -114,4 +114,14 @@ export interface AggregatedProductChangeDetail {
   marketplace: string;
   totalChangesSum: number; // Sum of change_price for this specific SKU+Marketplace by the seller
   latestChangeDate: string | null; // Most recent data_hora for this change
+}
+
+export interface BrandBuyboxWinSummary {
+  marca: string;
+  wins: number; // Number of unique SKUs this brand is winning the buybox for
+}
+
+export interface InternalSkuMapping {
+  internalSku?: string;
+  marca?: string;
 }

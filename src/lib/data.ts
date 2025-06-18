@@ -1,5 +1,5 @@
 
-import type { Product, PriceTrendProductInfo, Metrics, BuyboxWinner, SellerAnalysisMetrics, ProductLosingBuyboxInfo, ProductWinningBuyboxInfo, UniqueProductSummary } from './types';
+import type { Product, PriceTrendProductInfo, Metrics, BuyboxWinner, SellerAnalysisMetrics, ProductLosingBuyboxInfo, ProductWinningBuyboxInfo, UniqueProductSummary, BrandBuyboxWinSummary, InternalSkuMapping } from './types';
 import { parseISO, compareDesc, differenceInDays, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -18,24 +18,24 @@ interface ApiProduct {
   link_produto?: string;
   imagem: string;
   change_price?: any; // Can be boolean, string "true"/"false", number 1/0, or a count
-  status?: string; // Added status field
+  status?: string;
 }
 
 const parseChangePriceToNumericCount = (value: any): number => {
   if (typeof value === 'number') {
-    return Math.max(0, Math.floor(value)); // Use the number directly, ensure non-negative integer
+    return Math.max(0, Math.floor(value));
   }
   if (typeof value === 'string') {
     if (value.toLowerCase() === 'true') return 1;
     if (value.toLowerCase() === 'false') return 0;
     const num = parseInt(value, 10);
     if (!isNaN(num)) return Math.max(0, Math.floor(num));
-    return 0; // String is not "true", "false", or a parseable number
+    return 0;
   }
   if (typeof value === 'boolean') {
     return value ? 1 : 0;
   }
-  return 0; // Default for undefined, null, or other types
+  return 0;
 };
 
 export const fetchData = async (): Promise<Product[]> => {
@@ -56,7 +56,6 @@ export const fetchData = async (): Promise<Product[]> => {
 
     const apiProducts: ApiProduct[] = await response.json();
 
-    // Filter for products with status "ativo"
     const activeApiProducts = apiProducts.filter(apiProduct => apiProduct.status === "ativo");
 
     return activeApiProducts.map((apiProduct: ApiProduct, index: number): Product => {
@@ -174,8 +173,8 @@ export const analyzePriceTrends = (products: Product[], count: number = 3): Pric
     const productAtLatestDate = skuProducts[skuProducts.length - 1];
 
     try {
-      parseISO(productAtEarliestDate.data_hora); // Validate date
-      parseISO(productAtLatestDate.data_hora); // Validate date
+      parseISO(productAtEarliestDate.data_hora);
+      parseISO(productAtLatestDate.data_hora);
       if (productAtEarliestDate.data_hora === productAtLatestDate.data_hora && productAtEarliestDate.preco_final === productAtLatestDate.preco_final) continue;
     } catch (e) {
       console.warn(`Skipping trend analysis for SKU ${sku} due to invalid date format or insufficient data. Error: ${e}`);
@@ -286,7 +285,7 @@ export const analyzeSellerPerformance = (
     });
     if (sellerProducts[0] && sellerProducts[0].data_hora) {
       try {
-        parseISO(sellerProducts[0].data_hora); // validate
+        parseISO(sellerProducts[0].data_hora);
         lastUpdateTime = sellerProducts[0].data_hora;
       } catch (e) {
         console.warn("Could not parse date for lastUpdateTime", e);
@@ -329,7 +328,7 @@ export const analyzeSellerPerformance = (
       .sort((a,b) => compareDesc(parseISO(a.data_hora), parseISO(b.data_hora)));
 
     if (sellerProductInstancesForSku.length === 0) return;
-    const sellerProductForSku = sellerProductInstancesForSku[0]; // Most recent instance
+    const sellerProductForSku = sellerProductInstancesForSku[0];
 
     const allListingsForThisSku = productsBySkuGlobal[sku] || [];
 
@@ -452,7 +451,7 @@ export const generateUniqueProductSummaries = (products: Product[]): UniqueProdu
     const sortedSkuProducts = [...skuProducts].sort((a, b) => {
       try {
         if (!a.data_hora && !b.data_hora) return 0;
-        if (!a.data_hora) return 1; // Sort undefined/null dates to the end
+        if (!a.data_hora) return 1;
         if (!b.data_hora) return -1;
         return compareDesc(parseISO(a.data_hora), parseISO(b.data_hora));
       } catch {
@@ -492,5 +491,57 @@ export const generateUniqueProductSummaries = (products: Product[]): UniqueProdu
   return summaries.sort((a,b) => b.sellerCount - a.sellerCount || a.sku.localeCompare(b.sku));
 };
 
+export const calculateBrandBuyboxWins = (
+  products: Product[],
+  internalSkusMap: Record<string, InternalSkuMapping>
+): BrandBuyboxWinSummary[] => {
+  if (!products || products.length === 0 || Object.keys(internalSkusMap).length === 0) {
+    return [];
+  }
 
-    
+  const productsBySku: Record<string, Product[]> = {};
+  products.forEach(product => {
+    if (!product || !product.sku || product.preco_final === null || product.preco_final === undefined) return;
+    if (!productsBySku[product.sku]) {
+      productsBySku[product.sku] = [];
+    }
+    productsBySku[product.sku].push(product);
+  });
+
+  const buyboxWinningSkusByBrand: Record<string, Set<string>> = {};
+
+  for (const principalSku in productsBySku) {
+    const skuProducts = productsBySku[principalSku];
+    if (skuProducts.length === 0) continue;
+
+    let minPrice = Infinity;
+    skuProducts.forEach(p => {
+      if (p.preco_final < minPrice) {
+        minPrice = p.preco_final;
+      }
+    });
+
+    if (minPrice === Infinity) continue;
+
+    const brandMapping = internalSkusMap[principalSku];
+    const brand = brandMapping?.marca;
+
+    if (brand) {
+      // Check if any product instance for this SKU has the minPrice
+      const isWinningSkuForBrand = skuProducts.some(p => p.preco_final === minPrice);
+      if (isWinningSkuForBrand) {
+        if (!buyboxWinningSkusByBrand[brand]) {
+          buyboxWinningSkusByBrand[brand] = new Set<string>();
+        }
+        buyboxWinningSkusByBrand[brand].add(principalSku);
+      }
+    }
+  }
+
+  return Object.entries(buyboxWinningSkusByBrand)
+    .map(([marca, winningSkusSet]) => ({
+      marca,
+      wins: winningSkusSet.size,
+    }))
+    .sort((a, b) => b.wins - a.wins || a.marca.localeCompare(b.marca));
+};
