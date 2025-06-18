@@ -18,13 +18,13 @@ const COLORS_PIE = [
   "hsl(var(--chart-1))",   // Bright Cyan
   "hsl(var(--chart-2))",   // Bright Magenta
   "hsl(var(--chart-3))",   // Darker Cyan
-  "hsl(60 90% 50%)",      // Bright Yellow
+  "hsl(60 90% 50%)",      // Bright Yellow (example additional color)
   "hsl(var(--chart-4))",   // Darker Magenta
-  "hsl(25 95% 53%)",      // Bright Orange
+  "hsl(25 95% 53%)",      // Bright Orange (example additional color)
   "hsl(var(--chart-5))",   // Muted Gray-Blue
-  "hsl(150 85% 45%)",     // Bright Green
-  "hsl(200 90% 55%)",     // Bright Blue
-  "hsl(330 90% 65%)",     // Bright Pink
+  "hsl(150 85% 45%)",     // Bright Green (example additional color)
+  "hsl(200 90% 55%)",     // Bright Blue (example additional color)
+  "hsl(330 90% 65%)",     // Bright Pink (example additional color)
 ];
 
 
@@ -125,14 +125,14 @@ export function BrandBuyboxWinnersDisplay({ brandBuyboxWins, isLoading }: BrandB
                           cy="50%" 
                           outerRadius="80%" 
                           labelLine={false}
-                          label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, marca }) => {
+                          label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, index }) => {
                             const RADIAN = Math.PI / 180;
                             const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
                             const x = cx + radius * Math.cos(-midAngle * RADIAN);
                             const y = cy + radius * Math.sin(-midAngle * RADIAN);
-                            if ((percent * 100) < 5) return null; // Hide label for small slices
+                            if ((percent * 100) < 5) return null; 
                             return (
-                              <text x={x} y={y} fill="hsl(var(--primary-foreground))" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize={12}>
+                              <text x={x} y={y} fill="hsl(var(--foreground))" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize={12}>
                                 {`${processedPieData[index].marca} (${(percent * 100).toFixed(0)}%)`}
                               </text>
                             );
@@ -147,11 +147,9 @@ export function BrandBuyboxWinnersDisplay({ brandBuyboxWins, isLoading }: BrandB
                         </Pie>
                         <Legend 
                           iconSize={10} 
-                          wrapperStyle={{fontSize: "12px", color: "hsl(var(--foreground))"}}
-                          formatter={(value, entry) => {
+                          wrapperStyle={{fontSize: "12px"}}
+                          formatter={(value) => {
                              const originalEntry = processedPieData.find(p => p.marca === value);
-                             const colorIndex = processedPieData.findIndex(p => p.marca === value);
-                             const cellColor = COLORS_PIE[colorIndex % COLORS_PIE.length];
                              return (
                                 <span style={{ color: "hsl(var(--foreground))" }}>
                                   {originalEntry ? `${value} (${originalEntry.wins})` : value}
@@ -204,3 +202,4 @@ export function BrandBuyboxWinnersDisplay({ brandBuyboxWins, isLoading }: BrandB
     </Card>
   );
 }
+
