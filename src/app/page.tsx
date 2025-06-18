@@ -2,8 +2,8 @@
 "use client";
 
 import { useEffect, useState, useMemo } from 'react';
-import type { Product, BuyboxWinner, SellerAnalysisMetrics, UniqueProductSummary, InternalSkuMapping, BrandBuyboxWinSummary } from '@/lib/types';
-import { fetchData, getUniqueSellers, calculateBuyboxWins, analyzeSellerPerformance, getUniqueMarketplaces, generateUniqueProductSummaries, calculateBrandBuyboxWins } from '@/lib/data';
+import type { Product, BuyboxWinner, SellerAnalysisMetrics, UniqueProductSummary, InternalSkuMapping, BrandBuyboxWinSummary, MarketplaceBuyboxWinSummary } from '@/lib/types';
+import { fetchData, getUniqueSellers, calculateBuyboxWins, analyzeSellerPerformance, getUniqueMarketplaces, generateUniqueProductSummaries, calculateBrandBuyboxWins, calculateMarketplaceBuyboxWins } from '@/lib/data';
 import { AppHeader } from '@/components/AppHeader';
 import { BuyboxWinnersDisplay } from '@/components/BuyboxWinnersDisplay';
 import { BrandBuyboxWinnersDisplay } from '@/components/BrandBuyboxWinnersDisplay';
@@ -20,7 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Filter, BarChartBig, LayoutGrid, ChevronDown, Users, UploadCloud, Repeat, Building, Tags } from 'lucide-react';
+import { Filter, BarChartBig, LayoutGrid, ChevronDown, Users, UploadCloud, Repeat, Building, Tags, Globe } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -45,6 +45,7 @@ export default function HomePage() {
   const [uniqueSellersForAnalysis, setUniqueSellersForAnalysis] = useState<string[]>([]);
   const [buyboxWinners, setBuyboxWinners] = useState<BuyboxWinner[]>([]);
   const [brandBuyboxWinsData, setBrandBuyboxWinsData] = useState<BrandBuyboxWinSummary[]>([]);
+  const [marketplaceBuyboxWinsData, setMarketplaceBuyboxWinsData] = useState<MarketplaceBuyboxWinSummary[]>([]);
   const [analysis_selectedSellers, setAnalysis_selectedSellers] = useState<string[]>([]);
   const [analysis_sellerPerformanceData, setAnalysis_sellerPerformanceData] = useState<SellerAnalysisMetrics[]>([]);
   const [isSellerPerformanceLoading, setIsSellerPerformanceLoading] = useState<boolean>(false);
@@ -150,6 +151,7 @@ export default function HomePage() {
     });
     setBuyboxWinners(calculateBuyboxWins(analysis_productsFilteredByMarketplace));
     setBrandBuyboxWinsData(calculateBrandBuyboxWins(analysis_productsFilteredByMarketplace, internalSkusMap));
+    setMarketplaceBuyboxWinsData(calculateMarketplaceBuyboxWins(analysis_productsFilteredByMarketplace));
   }, [analysis_productsFilteredByMarketplace, internalSkusMap]);
 
   useEffect(() => {
@@ -406,7 +408,7 @@ export default function HomePage() {
                 <Card className="shadow-lg p-2 sm:p-6">
                     <CardHeader className="pb-4 px-2 sm:px-6">
                         <CardTitle className="flex items-center"><Users className="mr-2 h-5 w-5 text-primary" /> Análise de Desempenho por Vendedor</CardTitle>
-                        <CardDescription>Selecione um ou mais vendedores para ver suas métricas consolidadas e desempenho de marca.</CardDescription>
+                        <CardDescription>Selecione um ou mais vendedores para ver suas métricas consolidadas e desempenho de marca/marketplace.</CardDescription>
                     </CardHeader>
                     <CardContent className="px-2 sm:px-6">
                         <Label className="text-sm font-medium mb-1 block">Selecionar Vendedor(es) para Análise</Label>
@@ -436,12 +438,15 @@ export default function HomePage() {
                     </CardContent>
                 </Card>
                 
-                <BrandBuyboxWinnersDisplay brandBuyboxWins={brandBuyboxWinsData} isLoading={isLoading && brandBuyboxWinsData.length === 0 && analysis_productsFilteredByMarketplace.length > 0 && Object.keys(internalSkusMap).length > 0} />
-                {(isLoading && analysis_productsFilteredByMarketplace.length === 0 && allProducts.length > 0 && (analysis_selectedMarketplace !== null || analysis_selectedInternalSkus.length > 0 || analysis_selectedMarcas.length > 0)) && <p className="text-center text-muted-foreground">Carregando dados de buybox por marca...</p>}
+                <BrandBuyboxWinnersDisplay 
+                    brandBuyboxWins={brandBuyboxWinsData} 
+                    marketplaceBuyboxWins={marketplaceBuyboxWinsData}
+                    isLoading={isLoading && (brandBuyboxWinsData.length === 0 || marketplaceBuyboxWinsData.length === 0) && analysis_productsFilteredByMarketplace.length > 0 && Object.keys(internalSkusMap).length > 0} />
+                {(isLoading && analysis_productsFilteredByMarketplace.length === 0 && allProducts.length > 0 && (analysis_selectedMarketplace !== null || analysis_selectedInternalSkus.length > 0 || analysis_selectedMarcas.length > 0)) && <p className="text-center text-muted-foreground">Carregando dados de buybox por marca e marketplace...</p>}
                 {(!isLoading && analysis_productsFilteredByMarketplace.length === 0 && allProducts.length > 0 && (analysis_selectedMarketplace !== null || analysis_selectedInternalSkus.length > 0 || analysis_selectedMarcas.length > 0)) &&
-                    <Card className="shadow-lg mt-6"><CardHeader><CardTitle>Vencedores de Buybox por Marca</CardTitle><CardDescription>Nenhum produto encontrado para os filtros selecionados.</CardDescription></CardHeader></Card>
+                    <Card className="shadow-lg mt-6"><CardHeader><CardTitle>Vencedores de Buybox por Marca & Marketplace</CardTitle><CardDescription>Nenhum produto encontrado para os filtros selecionados.</CardDescription></CardHeader></Card>
                 }
-                {(!isLoading && Object.keys(internalSkusMap).length === 0 && analysis_productsFilteredByMarketplace.length > 0) &&
+                {(!isLoading && Object.keys(internalSkusMap).length === 0 && analysis_productsFilteredByMarketplace.length > 0 && brandBuyboxWinsData.length === 0) &&
                     <Card className="shadow-lg mt-6">
                         <CardHeader>
                             <CardTitle className="flex items-center"><Tags className="mr-2 h-5 w-5 text-primary" />Vencedores de Buybox por Marca</CardTitle>

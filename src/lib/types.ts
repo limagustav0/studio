@@ -116,12 +116,24 @@ export interface AggregatedProductChangeDetail {
   latestChangeDate: string | null; // Most recent data_hora for this change
 }
 
+export interface BrandMarketplaceWins { // Retained for potential future detailed breakdown
+  marketplace: string;
+  wins: number;
+}
 export interface BrandBuyboxWinSummary {
   marca: string;
-  wins: number; // Number of unique SKUs this brand is winning the buybox for
+  wins: number; // Total unique SKUs this brand is winning
+  // winsByMarketplace?: BrandMarketplaceWins[]; // Optional detailed breakdown
 }
+
+export interface MarketplaceBuyboxWinSummary {
+  marketplace: string;
+  wins: number; // Number of unique SKUs won in this marketplace
+}
+
 
 export interface InternalSkuMapping {
   internalSku?: string;
   marca?: string;
 }
+

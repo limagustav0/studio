@@ -1,5 +1,5 @@
 
-import type { Product, PriceTrendProductInfo, Metrics, BuyboxWinner, SellerAnalysisMetrics, ProductLosingBuyboxInfo, ProductWinningBuyboxInfo, UniqueProductSummary, BrandBuyboxWinSummary, InternalSkuMapping } from './types';
+import type { Product, PriceTrendProductInfo, Metrics, BuyboxWinner, SellerAnalysisMetrics, ProductLosingBuyboxInfo, ProductWinningBuyboxInfo, UniqueProductSummary, BrandBuyboxWinSummary, InternalSkuMapping, MarketplaceBuyboxWinSummary } from './types';
 import { parseISO, compareDesc, differenceInDays, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -544,4 +544,50 @@ export const calculateBrandBuyboxWins = (
       wins: winningSkusSet.size,
     }))
     .sort((a, b) => b.wins - a.wins || a.marca.localeCompare(b.marca));
+};
+
+export const calculateMarketplaceBuyboxWins = (products: Product[]): MarketplaceBuyboxWinSummary[] => {
+  if (!products || products.length === 0) return [];
+
+  const productsBySku: Record<string, Product[]> = {};
+  products.forEach(product => {
+    if (!product || !product.sku || product.preco_final === null || product.preco_final === undefined) return;
+    if (!productsBySku[product.sku]) {
+      productsBySku[product.sku] = [];
+    }
+    productsBySku[product.sku].push(product);
+  });
+
+  const marketplaceWinCounts: Record<string, number> = {};
+
+  for (const sku in productsBySku) {
+    const skuProducts = productsBySku[sku];
+    if (skuProducts.length === 0) continue;
+
+    let minPrice = Infinity;
+    skuProducts.forEach(p => {
+      if (p.preco_final < minPrice) {
+        minPrice = p.preco_final;
+      }
+    });
+
+    if (minPrice === Infinity) continue;
+
+    // Identify all unique marketplaces that have this SKU at the minimum price
+    const winningMarketplacesForThisSku = new Set<string>();
+    skuProducts.forEach(p => {
+      if (p.preco_final === minPrice && p.marketplace) {
+        winningMarketplacesForThisSku.add(p.marketplace);
+      }
+    });
+
+    // Increment the win count for each unique marketplace that won this SKU's buybox
+    winningMarketplacesForThisSku.forEach(mp => {
+      marketplaceWinCounts[mp] = (marketplaceWinCounts[mp] || 0) + 1;
+    });
+  }
+
+  return Object.entries(marketplaceWinCounts)
+    .map(([marketplace, wins]) => ({ marketplace, wins }))
+    .sort((a, b) => b.wins - a.wins || a.marketplace.localeCompare(b.marketplace));
 };
