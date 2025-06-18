@@ -440,11 +440,6 @@ export default function HomePage() {
             <Separator className="my-8" />
             <section aria-labelledby="buybox-analysis-title" className="space-y-6">
                 <h2 id="buybox-analysis-title" className="sr-only">Análise de Buybox</h2>
-                <BuyboxWinnersDisplay buyboxWinners={buyboxWinners} isLoading={isLoading && buyboxWinners.length === 0 && analysis_productsFilteredByMarketplace.length > 0} />
-                {(isLoading && analysis_productsFilteredByMarketplace.length === 0 && allProducts.length > 0 && (analysis_selectedMarketplace !== null || analysis_selectedInternalSkus.length > 0 || analysis_selectedMarcas.length > 0)) && <p className="text-center text-muted-foreground">Carregando dados de buybox por vendedor...</p>}
-                {(!isLoading && analysis_productsFilteredByMarketplace.length === 0 && allProducts.length > 0 && (analysis_selectedMarketplace !== null || analysis_selectedInternalSkus.length > 0 || analysis_selectedMarcas.length > 0)) &&
-                    <Card className="shadow-lg"><CardHeader><CardTitle>Vencedores de Buybox por Loja</CardTitle><CardDescription>Nenhum produto encontrado para os filtros selecionados.</CardDescription></CardHeader></Card>
-                }
 
                 <BrandBuyboxWinnersDisplay brandBuyboxWins={brandBuyboxWinsData} isLoading={isLoading && brandBuyboxWinsData.length === 0 && analysis_productsFilteredByMarketplace.length > 0 && Object.keys(internalSkusMap).length > 0} />
                  {(isLoading && analysis_productsFilteredByMarketplace.length === 0 && allProducts.length > 0 && (analysis_selectedMarketplace !== null || analysis_selectedInternalSkus.length > 0 || analysis_selectedMarcas.length > 0)) && <p className="text-center text-muted-foreground">Carregando dados de buybox por marca...</p>}
@@ -458,6 +453,12 @@ export default function HomePage() {
                             <CardDescription>Importe o mapeamento de SKUs e Marcas para visualizar esta análise.</CardDescription>
                         </CardHeader>
                     </Card>
+                }
+
+                <BuyboxWinnersDisplay buyboxWinners={buyboxWinners} isLoading={isLoading && buyboxWinners.length === 0 && analysis_productsFilteredByMarketplace.length > 0} />
+                {(isLoading && analysis_productsFilteredByMarketplace.length === 0 && allProducts.length > 0 && (analysis_selectedMarketplace !== null || analysis_selectedInternalSkus.length > 0 || analysis_selectedMarcas.length > 0)) && <p className="text-center text-muted-foreground">Carregando dados de buybox por vendedor...</p>}
+                {(!isLoading && analysis_productsFilteredByMarketplace.length === 0 && allProducts.length > 0 && (analysis_selectedMarketplace !== null || analysis_selectedInternalSkus.length > 0 || analysis_selectedMarcas.length > 0)) &&
+                    <Card className="shadow-lg"><CardHeader><CardTitle>Vencedores de Buybox por Loja</CardTitle><CardDescription>Nenhum produto encontrado para os filtros selecionados.</CardDescription></CardHeader></Card>
                 }
             </section>
           </TabsContent>
