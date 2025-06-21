@@ -1,3 +1,4 @@
+"use client";
 
 import type { BrandBuyboxWinSummary, MarketplaceBuyboxWinSummary } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -293,4 +294,3 @@ export function BrandBuyboxWinnersDisplay({ brandBuyboxWins, marketplaceBuyboxWi
     </Card>
   );
 }
-
