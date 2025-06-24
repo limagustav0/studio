@@ -1,4 +1,6 @@
 
+"use client";
+
 import type { SellerAnalysisMetrics, ProductLosingBuyboxInfo, ProductWinningBuyboxInfo, BrandBuyboxWinSummary, MarketplaceBuyboxWinSummary, InternalSkuMapping } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -81,8 +83,8 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
     const tempAllLosingProducts: (ProductLosingBuyboxInfo & { sellerName: string })[] = [];
     const tempAllWinningProducts: (ProductWinningBuyboxInfo & { sellerName: string })[] = [];
     
-    const brandWinsAggregator: Record<string, number> = {};
-    const marketplaceWinsAggregator: Record<string, number> = {};
+    const brandWinsAggregator: Record<string, { wins: number, skus: Set<string> }> = {};
+    const marketplaceWinsAggregator: Record<string, { wins: number, skus: Set<string> }> = {};
 
     performanceMetricsList.forEach(metrics => {
       totalProductsListed += metrics.totalProductsListed;
@@ -104,10 +106,12 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
       }
 
       metrics.brandBuyboxWins.forEach(bw => {
-        brandWinsAggregator[bw.marca] = (brandWinsAggregator[bw.marca] || 0) + bw.wins;
+        if (!brandWinsAggregator[bw.marca]) brandWinsAggregator[bw.marca] = { wins: 0, skus: new Set() };
+        bw.skus.forEach(sku => brandWinsAggregator[bw.marca].skus.add(sku));
       });
       metrics.marketplaceBuyboxWins.forEach(mw => {
-        marketplaceWinsAggregator[mw.marketplace] = (marketplaceWinsAggregator[mw.marketplace] || 0) + mw.wins;
+        if (!marketplaceWinsAggregator[mw.marketplace]) marketplaceWinsAggregator[mw.marketplace] = { wins: 0, skus: new Set() };
+        mw.skus.forEach(sku => marketplaceWinsAggregator[mw.marketplace].skus.add(sku));
       });
     });
     
@@ -116,7 +120,6 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
     // An SKU is lost if ALL selected sellers who list it are losing it.
     let consolidatedBuyboxesWon = 0;
     winningSkusSellerMap.forEach((sellersWinningThisSku, sku) => {
-        // If any of the selected sellers win this SKU, it's a win for the group
         if (selectedSellerNames.some(selectedSeller => sellersWinningThisSku.has(selectedSeller))) {
             consolidatedBuyboxesWon++;
         }
@@ -124,7 +127,6 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
 
     let consolidatedBuyboxesLost = 0;
     losingSkusSellerMap.forEach((sellersLosingThisSku, sku) => {
-        // This SKU is lost for the group if all selected sellers who offer it are losing
         const selectedSellersOfferingSku = selectedSellerNames.filter(selectedSeller => {
              return performanceMetricsList.find(m => m.sellerName === selectedSeller)?.productsLosingBuybox.some(p => p.sku === sku) ||
                     performanceMetricsList.find(m => m.sellerName === selectedSeller)?.productsWinningBuybox.some(p => p.sku === sku);
@@ -136,11 +138,11 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
 
 
     const consolidatedBrandWins: BrandBuyboxWinSummary[] = Object.entries(brandWinsAggregator)
-        .map(([marca, wins]) => ({ marca, wins }))
+        .map(([marca, data]) => ({ marca, wins: data.skus.size }))
         .sort((a, b) => b.wins - a.wins || a.marca.localeCompare(b.marca));
 
     const consolidatedMarketplaceWins: MarketplaceBuyboxWinSummary[] = Object.entries(marketplaceWinsAggregator)
-        .map(([marketplace, wins]) => ({ marketplace, wins }))
+        .map(([marketplace, data]) => ({ marketplace, wins: data.skus.size }))
         .sort((a, b) => b.wins - a.wins || a.marketplace.localeCompare(b.marketplace));
 
     return {
@@ -155,6 +157,9 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
     };
 
   }, [performanceMetricsList, selectedSellerNames]);
+
+
+  const isChartDataLoading = isLoading || (performanceMetricsList.length > 0 && (consolidatedMetrics.consolidatedBrandWins.length === 0 && consolidatedMetrics.consolidatedMarketplaceWins.length === 0 && Object.keys(internalSkusMap).length === 0) && consolidatedMetrics.buyboxesWon > 0);
 
 
   if (isLoading) {
@@ -230,9 +235,6 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
         </Card>
         );
   }
-
-  const isChartDataLoading = isLoading || (performanceMetricsList.length > 0 && (consolidatedMetrics.consolidatedBrandWins.length === 0 && consolidatedMetrics.consolidatedMarketplaceWins.length === 0 && Object.keys(internalSkusMap).length === 0) && consolidatedMetrics.buyboxesWon > 0);
-
 
   return (
     <Card className="shadow-lg w-full">
@@ -353,3 +355,5 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
     </Card>
   );
 }
+
+    
