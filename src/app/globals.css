@@ -8,92 +8,80 @@ body {
 
 @layer base {
   :root {
-    /* Cyberpunk-inspired theme */
-    --background: 220 13% 8%;    /* Very dark blue/black */
-    --foreground: 210 40% 98%;   /* Almost white, slightly cool */
+    /* Theme inspired by Época Cosméticos Logo */
+    --background: 210 20% 98%;    /* Off-white */
+    --foreground: 210 10% 23%;   /* Dark gray for text */
 
-    --card: 220 13% 12%;         /* Slightly lighter dark blue for cards */
-    --card-foreground: 210 40% 95%;
+    --card: 0 0% 100%;            /* White */
+    --card-foreground: 210 10% 23%;
 
-    --popover: 220 13% 10%;       /* Darker popover */
-    --popover-foreground: 210 40% 95%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 10% 23%;
 
-    --primary: 180 90% 50%;       /* Bright Cyan */
-    --primary-foreground: 220 13% 5%; /* Dark for contrast on cyan */
+    --primary: 330 90% 45%;      /* Strong Magenta/Pink from logo */
+    --primary-foreground: 0 0% 100%; /* White text on primary */
 
-    --secondary: 220 10% 20%;     /* Dark muted blue/gray */
-    --secondary-foreground: 180 80% 85%; /* Lighter cyan for text on secondary */
+    --secondary: 210 15% 94%;     /* Light gray for secondary elements */
+    --secondary-foreground: 210 10% 23%;
 
-    --muted: 220 10% 15%;         /* Muted dark blue/gray */
-    --muted-foreground: 210 20% 65%; /* Dimmed white/gray */
+    --muted: 210 15% 94%;
+    --muted-foreground: 210 5% 45%; /* Dimmed gray text */
 
-    --accent: 300 90% 60%;        /* Bright Magenta/Pink */
-    --accent-foreground: 210 40% 98%; /* White for contrast on magenta */
+    --accent: 330 80% 55%;         /* Lighter pink for hover/accent */
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 80% 60%;       /* Standard vibrant red for destructive actions */
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 180 50% 30%;        /* Cyan-ish border, less saturated */
-    --input: 220 13% 15%;         /* Dark input background */
-    --ring: 180 90% 60%;          /* Bright Cyan for focus rings */
+    --border: 210 10% 89%;        /* Light gray border */
+    --input: 210 10% 89%;         /* Light gray input background */
+    --ring: 330 90% 45%;          /* Primary color for focus rings */
     
-    --chart-1: 180 90% 50%;       /* Bright Cyan */
-    --chart-2: 300 90% 60%;       /* Bright Magenta */
-    --chart-3: 180 70% 40%;       /* Darker Cyan */
-    --chart-4: 300 70% 50%;       /* Darker Magenta */
-    --chart-5: 210 20% 50%;       /* Muted Gray-Blue */
+    --chart-1: 330 90% 45%;       /* Primary Pink */
+    --chart-2: 260 85% 65%;       /* A nice purple */
+    --chart-3: 210 85% 60%;       /* A complementary blue */
+    --chart-4: 350 90% 60%;       /* A reddish-pink */
+    --chart-5: 180 70% 45%;       /* A teal/cyan */
 
     --radius: 0.5rem;
 
-    /* Sidebar variables - consistent with the new theme */
-    --sidebar-background: 220 13% 6%; /* Even darker for sidebar */
-    --sidebar-foreground: 180 80% 85%;
-    --sidebar-primary: 180 90% 50%;
-    --sidebar-primary-foreground: 220 13% 5%;
-    --sidebar-accent: 300 90% 60%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 180 50% 20%;
-    --sidebar-ring: 180 90% 60%;
+    /* Sidebar variables - light theme */
+    --sidebar-background: 210 15% 96%;
+    --sidebar-foreground: 210 10% 23%;
+    --sidebar-primary: 330 90% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 330 80% 55%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 210 10% 89%;
+    --sidebar-ring: 330 90% 45%;
   }
 
   .dark {
-    /* In this case, the :root is already a dark theme. 
-       .dark can be identical or offer slight variations if needed for a "super dark" mode.
-       For simplicity, we'll keep it mostly the same. */
+    /* Original Cyberpunk-inspired dark theme */
     --background: 220 13% 8%;
     --foreground: 210 40% 98%;
-
     --card: 220 13% 12%;
     --card-foreground: 210 40% 95%;
-
     --popover: 220 13% 10%;
     --popover-foreground: 210 40% 95%;
-
     --primary: 180 90% 50%;
     --primary-foreground: 220 13% 5%;
-
     --secondary: 220 10% 20%;
     --secondary-foreground: 180 80% 85%;
-
     --muted: 220 10% 15%;
     --muted-foreground: 210 20% 65%;
-
     --accent: 300 90% 60%;
     --accent-foreground: 210 40% 98%;
-
     --destructive: 0 80% 60%;
     --destructive-foreground: 0 0% 98%;
-
     --border: 180 50% 30%;
     --input: 220 13% 15%;
     --ring: 180 90% 60%;
-    
     --chart-1: 180 90% 50%;
     --chart-2: 300 90% 60%;
     --chart-3: 180 70% 40%;
     --chart-4: 300 70% 50%;
     --chart-5: 210 20% 50%;
-
     --sidebar-background: 220 13% 6%;
     --sidebar-foreground: 180 80% 85%;
     --sidebar-primary: 180 90% 50%;
