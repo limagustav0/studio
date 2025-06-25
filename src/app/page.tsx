@@ -41,8 +41,6 @@ export default function HomePage() {
   const [analysis_selectedMarketplace, setAnalysis_selectedMarketplace] = useState<string | null>(null);
   const [analysis_selectedInternalSkus, setAnalysis_selectedInternalSkus] = useState<string[]>([]);
   const [analysis_selectedMarcas, setAnalysis_selectedMarcas] = useState<string[]>([]);
-  const [analysis_searchTerm, setAnalysis_searchTerm] = useState<string>('');
-  const debouncedAnalysis_SearchTerm = useDebounce(analysis_searchTerm, SEARCH_DEBOUNCE_DELAY);
   const [uniqueSellersForAnalysis, setUniqueSellersForAnalysis] = useState<string[]>([]);
   const [buyboxWinners, setBuyboxWinners] = useState<BuyboxWinner[]>([]);
   const [analysis_selectedSellers, setAnalysis_selectedSellers] = useState<string[]>([]);
@@ -58,8 +56,6 @@ export default function HomePage() {
   // Price Change Tab States
   const [priceChangeTab_selectedMarketplace, setPriceChangeTab_selectedMarketplace] = useState<string | null>(null);
   const [priceChangeTab_selectedInternalSkus, setPriceChangeTab_selectedInternalSkus] = useState<string[]>([]);
-  const [priceChangeTab_searchTerm, setPriceChangeTab_searchTerm] = useState<string>('');
-  const debouncedPriceChangeTab_SearchTerm = useDebounce(priceChangeTab_searchTerm, SEARCH_DEBOUNCE_DELAY);
 
 
   useEffect(() => {
@@ -142,17 +138,8 @@ export default function HomePage() {
             : (analysis_selectedMarcas.length > 0 ? [] : filtered);
     }
 
-    if (debouncedAnalysis_SearchTerm) {
-        const lowerSearchTerm = debouncedAnalysis_SearchTerm.toLowerCase();
-        filtered = filtered.filter(p =>
-            p.descricao.toLowerCase().includes(lowerSearchTerm) ||
-            p.sku.toLowerCase().includes(lowerSearchTerm) ||
-            p.loja.toLowerCase().includes(lowerSearchTerm)
-        );
-    }
-
     return filtered;
-  }, [allProducts, analysis_selectedMarketplace, analysis_selectedInternalSkus, analysis_selectedMarcas, internalSkusMap, debouncedAnalysis_SearchTerm]);
+  }, [allProducts, analysis_selectedMarketplace, analysis_selectedInternalSkus, analysis_selectedMarcas, internalSkusMap]);
 
   useEffect(() => {
     const currentMarketplaceSellers = getUniqueSellers(analysis_productsFilteredByMarketplace);
@@ -322,16 +309,8 @@ export default function HomePage() {
             .map(([principalSku, _]) => principalSku);
         filtered = matchingPrincipalSkus.length > 0 ? filtered.filter(p => matchingPrincipalSkus.includes(p.sku)) : (priceChangeTab_selectedInternalSkus.length > 0 ? [] : filtered);
     }
-    if (debouncedPriceChangeTab_SearchTerm) {
-      const lowerSearchTerm = debouncedPriceChangeTab_SearchTerm.toLowerCase();
-      filtered = filtered.filter(p =>
-          p.descricao.toLowerCase().includes(lowerSearchTerm) ||
-          p.sku.toLowerCase().includes(lowerSearchTerm) ||
-          p.loja.toLowerCase().includes(lowerSearchTerm)
-      );
-    }
     return filtered;
-  }, [allProducts, priceChangeTab_selectedMarketplace, priceChangeTab_selectedInternalSkus, internalSkusMap, debouncedPriceChangeTab_SearchTerm]);
+  }, [allProducts, priceChangeTab_selectedMarketplace, priceChangeTab_selectedInternalSkus, internalSkusMap]);
   
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -360,7 +339,7 @@ export default function HomePage() {
                     <CardDescription>Aplique filtros para refinar os dados exibidos nas seções de Análise de Desempenho e Vencedores de Buybox abaixo.</CardDescription>
                 </CardHeader>
                 <CardContent className="px-2 sm:px-6 space-y-4">
-                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"> 
+                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"> 
                     <div>
                         <Label htmlFor="analysis-marketplace-filter" className="text-sm font-medium">Filtrar por Marketplace</Label>
                         <Select value={analysis_selectedMarketplace || ALL_MARKETPLACES_OPTION_VALUE} onValueChange={handleAnalysisMarketplaceChange}>
@@ -416,15 +395,6 @@ export default function HomePage() {
                                 </ScrollArea>
                             </DropdownMenuContent>
                         </DropdownMenu>
-                    </div>
-                    <div>
-                        <Label htmlFor="analysis-search" className="text-sm font-medium">Pesquisar</Label>
-                        <SearchBar
-                            searchTerm={analysis_searchTerm}
-                            onSearchChange={setAnalysis_searchTerm}
-                            placeholder="Descrição, SKU, Loja..."
-                            className="mt-1"
-                        />
                     </div>
                    </div>
                 </CardContent>
@@ -523,7 +493,7 @@ export default function HomePage() {
                     <CardDescription>Refine a lista de vendedores e produtos com alterações de preço.</CardDescription>
                 </CardHeader>
                 <CardContent className="px-2 sm:px-6 space-y-4">
-                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <Label htmlFor="pricechange-marketplace-filter" className="text-sm font-medium">Filtrar por Marketplace</Label>
                         <Select value={priceChangeTab_selectedMarketplace || ALL_MARKETPLACES_OPTION_VALUE} onValueChange={handlePriceChangeTabMarketplaceChange}>
@@ -556,15 +526,6 @@ export default function HomePage() {
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
-                    <div>
-                        <Label htmlFor="pricechange-search" className="text-sm font-medium">Pesquisar</Label>
-                        <SearchBar
-                            searchTerm={priceChangeTab_searchTerm}
-                            onSearchChange={setPriceChangeTab_searchTerm}
-                            placeholder="Descrição, SKU, Loja..."
-                            className="mt-1"
-                        />
-                    </div>
                    </div>
                 </CardContent>
             </Card>
@@ -583,3 +544,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+    
