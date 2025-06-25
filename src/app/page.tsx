@@ -19,11 +19,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Filter, BarChartBig, LayoutGrid, ChevronDown, Users, UploadCloud, Repeat, Building, Tags, Globe } from 'lucide-react';
+import { Filter, BarChartBig, LayoutGrid, ChevronDown, Users, UploadCloud, Repeat, Building, Tags, Globe, Search } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Input } from '@/components/ui/input';
 
 const ALL_MARKETPLACES_OPTION_VALUE = "--all-marketplaces--";
 const DEFAULT_SELLER_FOCUS = "HAIRPRO";
@@ -46,6 +47,12 @@ export default function HomePage() {
   const [analysis_selectedSellers, setAnalysis_selectedSellers] = useState<string[]>([]);
   const [analysis_sellerPerformanceData, setAnalysis_sellerPerformanceData] = useState<SellerAnalysisMetrics[]>([]);
   const [isSellerPerformanceLoading, setIsSellerPerformanceLoading] = useState<boolean>(false);
+
+  // States for Dropdown search
+  const [analysisSellerSearch, setAnalysisSellerSearch] = useState('');
+  const [analysisInternalSkuSearch, setAnalysisInternalSkuSearch] = useState('');
+  const [analysisMarcaSearch, setAnalysisMarcaSearch] = useState('');
+  const [priceChangeInternalSkuSearch, setPriceChangeInternalSkuSearch] = useState('');
 
   // Overview Tab States
   const [uniqueProductSummaries, setUniqueProductSummaries] = useState<UniqueProductSummary[]>([]);
@@ -360,15 +367,30 @@ export default function HomePage() {
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
-                                <DropdownMenuLabel>SKUs Internos Disponíveis</DropdownMenuLabel>
+                                <div className="p-2">
+                                  <div className="relative">
+                                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        placeholder="Pesquisar SKU..."
+                                        value={analysisInternalSkuSearch}
+                                        onChange={(e) => setAnalysisInternalSkuSearch(e.target.value)}
+                                        className="h-9 pl-8"
+                                    />
+                                  </div>
+                                </div>
                                 <DropdownMenuSeparator />
                                 {uniqueInternalSkuValues.length === 0 && (<p className="px-2 py-1.5 text-sm text-muted-foreground">Nenhum SKU interno mapeado.</p>)}
                                 <ScrollArea className="h-[200px]">
-                                {uniqueInternalSkuValues.map((sku) => (
-                                <DropdownMenuCheckboxItem key={`internal-sku-filter-${sku}`} checked={analysis_selectedInternalSkusSet.has(sku)}
-                                    onCheckedChange={(checked) => setAnalysis_selectedInternalSkus(prev => checked ? [...prev, sku] : prev.filter(s => s !== sku))}
-                                    onSelect={(e) => e.preventDefault()}>{sku}</DropdownMenuCheckboxItem>
-                                ))}
+                                {uniqueInternalSkuValues
+                                    .filter(sku => sku.toLowerCase().includes(analysisInternalSkuSearch.toLowerCase()))
+                                    .map((sku) => (
+                                    <DropdownMenuCheckboxItem key={`internal-sku-filter-${sku}`} checked={analysis_selectedInternalSkusSet.has(sku)}
+                                        onCheckedChange={(checked) => setAnalysis_selectedInternalSkus(prev => checked ? [...prev, sku] : prev.filter(s => s !== sku))}
+                                        onSelect={(e) => e.preventDefault()}>{sku}</DropdownMenuCheckboxItem>
+                                    ))}
+                                {uniqueInternalSkuValues.filter(sku => sku.toLowerCase().includes(analysisInternalSkuSearch.toLowerCase())).length === 0 && uniqueInternalSkuValues.length > 0 && (
+                                    <p className="px-2 py-1.5 text-sm text-muted-foreground text-center">Nenhum resultado.</p>
+                                )}
                                 </ScrollArea>
                             </DropdownMenuContent>
                         </DropdownMenu>
@@ -383,15 +405,30 @@ export default function HomePage() {
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
-                                <DropdownMenuLabel>Marcas Disponíveis</DropdownMenuLabel>
+                                <div className="p-2">
+                                  <div className="relative">
+                                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        placeholder="Pesquisar marca..."
+                                        value={analysisMarcaSearch}
+                                        onChange={(e) => setAnalysisMarcaSearch(e.target.value)}
+                                        className="h-9 pl-8"
+                                    />
+                                  </div>
+                                </div>
                                 <DropdownMenuSeparator />
                                 {uniqueMarcaValues.length === 0 && (<p className="px-2 py-1.5 text-sm text-muted-foreground">Nenhuma marca mapeada.</p>)}
                                 <ScrollArea className="h-[200px]">
-                                {uniqueMarcaValues.map((marca) => (
-                                <DropdownMenuCheckboxItem key={`marca-filter-${marca}`} checked={analysis_selectedMarcasSet.has(marca)}
-                                    onCheckedChange={(checked) => setAnalysis_selectedMarcas(prev => checked ? [...prev, marca] : prev.filter(m => m !== marca))}
-                                    onSelect={(e) => e.preventDefault()}>{marca}</DropdownMenuCheckboxItem>
-                                ))}
+                                {uniqueMarcaValues
+                                    .filter(marca => marca.toLowerCase().includes(analysisMarcaSearch.toLowerCase()))
+                                    .map((marca) => (
+                                    <DropdownMenuCheckboxItem key={`marca-filter-${marca}`} checked={analysis_selectedMarcasSet.has(marca)}
+                                        onCheckedChange={(checked) => setAnalysis_selectedMarcas(prev => checked ? [...prev, marca] : prev.filter(m => m !== marca))}
+                                        onSelect={(e) => e.preventDefault()}>{marca}</DropdownMenuCheckboxItem>
+                                    ))}
+                                {uniqueMarcaValues.filter(marca => marca.toLowerCase().includes(analysisMarcaSearch.toLowerCase())).length === 0 && uniqueMarcaValues.length > 0 && (
+                                    <p className="px-2 py-1.5 text-sm text-muted-foreground text-center">Nenhum resultado.</p>
+                                )}
                                 </ScrollArea>
                             </DropdownMenuContent>
                         </DropdownMenu>
@@ -422,13 +459,29 @@ export default function HomePage() {
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
-                                <DropdownMenuLabel>Vendedores Disponíveis</DropdownMenuLabel><DropdownMenuSeparator />
+                                <div className="p-2">
+                                  <div className="relative">
+                                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        placeholder="Pesquisar vendedor..."
+                                        value={analysisSellerSearch}
+                                        onChange={(e) => setAnalysisSellerSearch(e.target.value)}
+                                        className="h-9 pl-8"
+                                    />
+                                  </div>
+                                </div>
+                                <DropdownMenuSeparator />
                                 <ScrollArea className="h-[200px]">
-                                {uniqueSellersForAnalysis.map((seller) => (
-                                <DropdownMenuCheckboxItem key={seller} checked={analysis_selectedSellersSet.has(seller)}
-                                    onCheckedChange={(checked) => setAnalysis_selectedSellers(prev => checked ? [...prev, seller] : prev.filter(s => s !== seller))}
-                                    onSelect={(e) => e.preventDefault()}>{seller}</DropdownMenuCheckboxItem>
-                                ))}
+                                {uniqueSellersForAnalysis
+                                    .filter(seller => seller.toLowerCase().includes(analysisSellerSearch.toLowerCase()))
+                                    .map((seller) => (
+                                    <DropdownMenuCheckboxItem key={seller} checked={analysis_selectedSellersSet.has(seller)}
+                                        onCheckedChange={(checked) => setAnalysis_selectedSellers(prev => checked ? [...prev, seller] : prev.filter(s => s !== seller))}
+                                        onSelect={(e) => e.preventDefault()}>{seller}</DropdownMenuCheckboxItem>
+                                    ))}
+                                {uniqueSellersForAnalysis.filter(seller => seller.toLowerCase().includes(analysisSellerSearch.toLowerCase())).length === 0 && uniqueSellersForAnalysis.length > 0 && (
+                                    <p className="px-2 py-1.5 text-sm text-muted-foreground text-center">Nenhum resultado.</p>
+                                )}
                                 </ScrollArea>
                             </DropdownMenuContent>
                         </DropdownMenu>
@@ -514,14 +567,30 @@ export default function HomePage() {
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
-                                <DropdownMenuLabel>SKUs Internos Disponíveis</DropdownMenuLabel><DropdownMenuSeparator />
+                                <div className="p-2">
+                                  <div className="relative">
+                                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        placeholder="Pesquisar SKU..."
+                                        value={priceChangeInternalSkuSearch}
+                                        onChange={(e) => setPriceChangeInternalSkuSearch(e.target.value)}
+                                        className="h-9 pl-8"
+                                    />
+                                  </div>
+                                </div>
+                                <DropdownMenuSeparator />
                                  {uniqueInternalSkuValues.length === 0 && (<p className="px-2 py-1.5 text-sm text-muted-foreground">Nenhum SKU interno mapeado.</p>)}
                                 <ScrollArea className="h-[200px]">
-                                {uniqueInternalSkuValues.map((sku) => (
-                                <DropdownMenuCheckboxItem key={`internal-sku-filter-pricechange-${sku}`} checked={priceChangeTab_selectedInternalSkusSet.has(sku)}
-                                    onCheckedChange={(checked) => setPriceChangeTab_selectedInternalSkus(prev => checked ? [...prev, sku] : prev.filter(s => s !== sku))}
-                                    onSelect={(e) => e.preventDefault()}>{sku}</DropdownMenuCheckboxItem>
-                                ))}
+                                {uniqueInternalSkuValues
+                                    .filter(sku => sku.toLowerCase().includes(priceChangeInternalSkuSearch.toLowerCase()))
+                                    .map((sku) => (
+                                    <DropdownMenuCheckboxItem key={`internal-sku-filter-pricechange-${sku}`} checked={priceChangeTab_selectedInternalSkusSet.has(sku)}
+                                        onCheckedChange={(checked) => setPriceChangeTab_selectedInternalSkus(prev => checked ? [...prev, sku] : prev.filter(s => s !== sku))}
+                                        onSelect={(e) => e.preventDefault()}>{sku}</DropdownMenuCheckboxItem>
+                                    ))}
+                                {uniqueInternalSkuValues.filter(sku => sku.toLowerCase().includes(priceChangeInternalSkuSearch.toLowerCase())).length === 0 && uniqueInternalSkuValues.length > 0 && (
+                                    <p className="px-2 py-1.5 text-sm text-muted-foreground text-center">Nenhum resultado.</p>
+                                )}
                                 </ScrollArea>
                             </DropdownMenuContent>
                         </DropdownMenu>
