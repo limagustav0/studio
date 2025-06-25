@@ -438,7 +438,7 @@ export const analyzeSellerPerformance = (
     }
   });
   const sellerBrandBuyboxWins: BrandBuyboxWinSummary[] = Object.entries(sellerBrandWinsMap)
-    .map(([marca, skus]) => ({ marca, wins: skus.size }))
+    .map(([marca, skus]) => ({ marca, wins: skus.size, skus: Array.from(skus) }))
     .sort((a, b) => b.wins - a.wins || a.marca.localeCompare(b.marca));
 
   // Calculate marketplace buybox wins for the selected seller
@@ -452,7 +452,7 @@ export const analyzeSellerPerformance = (
     }
   });
   const sellerMarketplaceBuyboxWins: MarketplaceBuyboxWinSummary[] = Object.entries(sellerMarketplaceWinsMap)
-    .map(([marketplace, skus]) => ({ marketplace, wins: skus.size }))
+    .map(([marketplace, skus]) => ({ marketplace, wins: skus.size, skus: Array.from(skus) }))
     .sort((a, b) => b.wins - a.wins || a.marketplace.localeCompare(b.marketplace));
 
   return {

@@ -73,11 +73,13 @@ export interface ProductWinningBuyboxInfo {
 export interface BrandBuyboxWinSummary {
   marca: string;
   wins: number; // Total unique SKUs this brand is winning (for the selected seller)
+  skus: string[];
 }
 
 export interface MarketplaceBuyboxWinSummary {
   marketplace: string;
   wins: number; // Total unique SKUs won in this marketplace (by the selected seller)
+  skus: string[];
 }
 
 export interface SellerAnalysisMetrics {
