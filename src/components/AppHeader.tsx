@@ -12,8 +12,8 @@ export function AppHeader() {
             height={40}
             priority
         />
-        <span className="text-xl font-semibold text-foreground whitespace-nowrap">
-          monitoramento de preços - ÉPOCA COSMÉTICOS
+        <span className="text-xl font-semibold text-primary whitespace-nowrap">
+          MONITORAMENTO - ÉPOCA MARKETPLACE
         </span>
       </div>
     </header>
