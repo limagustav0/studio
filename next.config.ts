@@ -41,6 +41,12 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'seller.epocacosmeticos.com.br',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
   async rewrites() {
