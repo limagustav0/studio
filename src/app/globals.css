@@ -8,7 +8,7 @@ body {
 
 @layer base {
   :root {
-    /* Theme inspired by Época Cosméticos Logo */
+    /* Theme inspired by Época Cosméticos Logo - Lighter version */
     --background: 210 20% 98%;    /* Off-white */
     --foreground: 210 10% 23%;   /* Dark gray for text */
 
@@ -18,7 +18,7 @@ body {
     --popover: 0 0% 100%;
     --popover-foreground: 210 10% 23%;
 
-    --primary: 330 90% 45%;      /* Strong Magenta/Pink from logo */
+    --primary: 330 90% 55%;      /* Lighter, vibrant Magenta/Pink */
     --primary-foreground: 0 0% 100%; /* White text on primary */
 
     --secondary: 210 15% 94%;     /* Light gray for secondary elements */
@@ -27,7 +27,7 @@ body {
     --muted: 210 15% 94%;
     --muted-foreground: 210 5% 45%; /* Dimmed gray text */
 
-    --accent: 330 80% 55%;         /* Lighter pink for hover/accent */
+    --accent: 330 80% 65%;         /* Even lighter pink for hover/accent */
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
@@ -35,9 +35,9 @@ body {
 
     --border: 210 10% 89%;        /* Light gray border */
     --input: 210 10% 89%;         /* Light gray input background */
-    --ring: 330 90% 45%;          /* Primary color for focus rings */
+    --ring: 330 90% 55%;          /* Primary color for focus rings */
     
-    --chart-1: 330 90% 45%;       /* Primary Pink */
+    --chart-1: 330 90% 55%;       /* Primary Pink */
     --chart-2: 260 85% 65%;       /* A nice purple */
     --chart-3: 210 85% 60%;       /* A complementary blue */
     --chart-4: 350 90% 60%;       /* A reddish-pink */
@@ -46,12 +46,12 @@ body {
     /* Sidebar variables - light theme */
     --sidebar-background: 210 15% 96%;
     --sidebar-foreground: 210 10% 23%;
-    --sidebar-primary: 330 90% 45%;
+    --sidebar-primary: 330 90% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 330 80% 55%;
+    --sidebar-accent: 330 80% 65%;
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 210 10% 89%;
-    --sidebar-ring: 330 90% 45%;
+    --sidebar-ring: 330 90% 55%;
     --radius: 0.5rem;
   }
 
