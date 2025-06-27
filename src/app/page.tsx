@@ -19,12 +19,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Filter, BarChartBig, LayoutGrid, ChevronDown, Users, UploadCloud, Repeat, Building, Tags, Globe, Search } from 'lucide-react';
+import { Filter, BarChartBig, LayoutGrid, ChevronDown, Users, UploadCloud, Repeat, Building, Tags, Globe, Search, Download } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from '@/components/ui/input';
+import * as XLSX from 'xlsx';
 
 const ALL_MARKETPLACES_OPTION_VALUE = "--all-marketplaces--";
 const DEFAULT_SELLER_FOCUS = "HAIRPRO";
@@ -319,6 +320,58 @@ export default function HomePage() {
     return filtered;
   }, [allProducts, priceChangeTab_selectedMarketplace, priceChangeTab_selectedInternalSkus, internalSkusMap]);
   
+  const handleDownloadXLSX = () => {
+    if (!analysis_productsFilteredByMarketplace || analysis_productsFilteredByMarketplace.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "Nenhum Dado para Exportar",
+        description: "Aplique filtros que retornem dados para poder exportar.",
+      });
+      return;
+    }
+
+    const dataToExport = analysis_productsFilteredByMarketplace.map(product => {
+      const mapping = internalSkusMap[product.sku] || {};
+      return {
+        'SKU Principal': product.sku,
+        'SKU Interno': mapping.internalSku || 'N/A',
+        'Marca': mapping.marca || 'N/A',
+        'Descrição': product.descricao,
+        'Loja (Vendedor)': product.loja,
+        'Marketplace': product.marketplace,
+        'Preço Final (R$)': product.preco_final,
+        'Avaliação': product.avaliacao,
+        'Data da Raspagem': product.data_hora ? new Date(product.data_hora).toLocaleString('pt-BR') : 'N/A',
+        'Contador de Mudanças': product.change_price || 0,
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Dados Filtrados");
+
+    const columnWidths = [
+      { wch: 25 }, // SKU Principal
+      { wch: 25 }, // SKU Interno
+      { wch: 20 }, // Marca
+      { wch: 50 }, // Descrição
+      { wch: 25 }, // Loja
+      { wch: 20 }, // Marketplace
+      { wch: 15 }, // Preço
+      { wch: 10 }, // Avaliação
+      { wch: 20 }, // Data
+      { wch: 20 }, // Contador
+    ];
+    worksheet['!cols'] = columnWidths;
+
+    XLSX.writeFile(workbook, `export_pricewise_${new Date().toISOString().split('T')[0]}.xlsx`);
+
+    toast({
+        title: "Download Iniciado",
+        description: `${dataToExport.length} registros estão sendo exportados para XLSX.`,
+    });
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <AppHeader />
@@ -342,8 +395,16 @@ export default function HomePage() {
           <TabsContent value="analysis" className="space-y-8">
             <Card className="shadow-lg p-2 sm:p-6">
                 <CardHeader className="pb-4 px-2 sm:px-6">
-                    <CardTitle className="flex items-center"><Filter className="mr-2 h-5 w-5 text-primary" />Filtro para Análise</CardTitle>
-                    <CardDescription>Aplique filtros para refinar os dados exibidos nas seções de Análise de Desempenho e Vencedores de Buybox abaixo.</CardDescription>
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <CardTitle className="flex items-center"><Filter className="mr-2 h-5 w-5 text-primary" />Filtro para Análise</CardTitle>
+                            <CardDescription>Aplique filtros para refinar os dados exibidos nas seções abaixo.</CardDescription>
+                        </div>
+                        <Button onClick={handleDownloadXLSX} variant="outline" className="w-full sm:w-auto">
+                            <Download className="mr-2 h-4 w-4" />
+                            Exportar para XLSX
+                        </Button>
+                    </div>
                 </CardHeader>
                 <CardContent className="px-2 sm:px-6 space-y-4">
                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"> 
@@ -613,5 +674,7 @@ export default function HomePage() {
     </div>
   );
 }
+
+    
 
     
