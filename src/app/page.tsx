@@ -31,12 +31,14 @@ const ALL_MARKETPLACES_OPTION_VALUE = "--all-marketplaces--";
 const DEFAULT_SELLER_FOCUS = "HAIRPRO";
 const INTERNAL_SKUS_LOCAL_STORAGE_KEY = 'priceWiseInternalSkusMap_v2';
 const SEARCH_DEBOUNCE_DELAY = 500;
+const STATE_UPDATE_DEBOUNCE_DELAY = 500;
 
 export default function HomePage() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const [internalSkusMap, setInternalSkusMap] = useState<Record<string, InternalSkuMapping>>({});
+  const debouncedInternalSkusMap = useDebounce(internalSkusMap, STATE_UPDATE_DEBOUNCE_DELAY);
   const [uniqueMarketplaces, setUniqueMarketplaces] = useState<string[]>([]);
 
   // Analysis Tab States
@@ -127,7 +129,7 @@ export default function HomePage() {
     }
 
     if (analysis_selectedInternalSkus.length > 0) {
-      const matchingPrincipalSkusByInternalSku = Object.entries(internalSkusMap)
+      const matchingPrincipalSkusByInternalSku = Object.entries(debouncedInternalSkusMap)
         .filter(([_, mapping]) => analysis_selectedInternalSkus.includes(mapping.internalSku || ''))
         .map(([principalSku, _]) => principalSku);
       
@@ -137,7 +139,7 @@ export default function HomePage() {
     }
 
     if (analysis_selectedMarcas.length > 0) {
-        const matchingPrincipalSkusByMarca = Object.entries(internalSkusMap)
+        const matchingPrincipalSkusByMarca = Object.entries(debouncedInternalSkusMap)
             .filter(([_, mapping]) => analysis_selectedMarcas.includes(mapping.marca || ''))
             .map(([principalSku, _]) => principalSku);
         
@@ -147,7 +149,7 @@ export default function HomePage() {
     }
 
     return filtered;
-  }, [allProducts, analysis_selectedMarketplace, analysis_selectedInternalSkus, analysis_selectedMarcas, internalSkusMap]);
+  }, [allProducts, analysis_selectedMarketplace, analysis_selectedInternalSkus, analysis_selectedMarcas, debouncedInternalSkusMap]);
 
   useEffect(() => {
     const currentMarketplaceSellers = getUniqueSellers(analysis_productsFilteredByMarketplace);
@@ -164,7 +166,7 @@ export default function HomePage() {
     if (analysis_selectedSellers.length > 0 && analysis_productsFilteredByMarketplace.length > 0) {
       setIsSellerPerformanceLoading(true);
       const promises = analysis_selectedSellers.map(sellerName =>
-        analyzeSellerPerformance(analysis_productsFilteredByMarketplace, sellerName, internalSkusMap)
+        analyzeSellerPerformance(analysis_productsFilteredByMarketplace, sellerName, debouncedInternalSkusMap)
       );
       Promise.all(promises)
         .then(results => {
@@ -174,13 +176,13 @@ export default function HomePage() {
               ...metric,
               productsLosingBuybox: metric.productsLosingBuybox.map(p => ({
                 ...p,
-                internalSku: internalSkusMap[p.sku]?.internalSku || '',
-                marca: internalSkusMap[p.sku]?.marca || '',
+                internalSku: debouncedInternalSkusMap[p.sku]?.internalSku || '',
+                marca: debouncedInternalSkusMap[p.sku]?.marca || '',
               })),
               productsWinningBuybox: metric.productsWinningBuybox.map(p => ({
                 ...p,
-                internalSku: internalSkusMap[p.sku]?.internalSku || '',
-                marca: internalSkusMap[p.sku]?.marca || '',
+                internalSku: debouncedInternalSkusMap[p.sku]?.internalSku || '',
+                marca: debouncedInternalSkusMap[p.sku]?.marca || '',
               })),
             };
           }).filter(r => r !== null) as SellerAnalysisMetrics[];
@@ -200,7 +202,7 @@ export default function HomePage() {
       setAnalysis_sellerPerformanceData([]);
       setIsSellerPerformanceLoading(false);
     }
-  }, [analysis_selectedSellers, analysis_productsFilteredByMarketplace, toast, internalSkusMap]);
+  }, [analysis_selectedSellers, analysis_productsFilteredByMarketplace, toast, debouncedInternalSkusMap]);
 
   const handleAnalysisMarketplaceChange = (value: string) => {
     setAnalysis_selectedMarketplace(value === ALL_MARKETPLACES_OPTION_VALUE ? null : value);
@@ -312,13 +314,13 @@ export default function HomePage() {
         filtered = filtered.filter(p => p.marketplace === priceChangeTab_selectedMarketplace);
     }
     if (priceChangeTab_selectedInternalSkus.length > 0) {
-        const matchingPrincipalSkus = Object.entries(internalSkusMap)
+        const matchingPrincipalSkus = Object.entries(debouncedInternalSkusMap)
             .filter(([_, mapping]) => priceChangeTab_selectedInternalSkus.includes(mapping.internalSku || ''))
             .map(([principalSku, _]) => principalSku);
         filtered = matchingPrincipalSkus.length > 0 ? filtered.filter(p => matchingPrincipalSkus.includes(p.sku)) : (priceChangeTab_selectedInternalSkus.length > 0 ? [] : filtered);
     }
     return filtered;
-  }, [allProducts, priceChangeTab_selectedMarketplace, priceChangeTab_selectedInternalSkus, internalSkusMap]);
+  }, [allProducts, priceChangeTab_selectedMarketplace, priceChangeTab_selectedInternalSkus, debouncedInternalSkusMap]);
   
   const handleDownloadXLSX = () => {
     if (!analysis_productsFilteredByMarketplace || analysis_productsFilteredByMarketplace.length === 0) {
@@ -674,6 +676,8 @@ export default function HomePage() {
     </div>
   );
 }
+
+    
 
     
 
