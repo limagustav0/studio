@@ -5,12 +5,15 @@ import type { SellerAnalysisMetrics, ProductLosingBuyboxInfo, ProductWinningBuyb
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TrendingUp, TrendingDown, ListChecks, PackageSearch, AlertTriangle, Info, CheckCircle2, Clock, Users, Tags, Globe } from 'lucide-react';
+import { TrendingUp, TrendingDown, ListChecks, PackageSearch, AlertTriangle, Info, CheckCircle2, Clock, Users, Tags, Globe, Download } from 'lucide-react';
 import Image from 'next/image';
 import { format as formatDate, parseISO, compareDesc } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { BrandBuyboxWinnersDisplay } from '@/components/BrandBuyboxWinnersDisplay';
+import { Button } from '@/components/ui/button';
+import * as XLSX from 'xlsx';
+import { useToast } from "@/hooks/use-toast";
 import {
   Accordion,
   AccordionContent,
@@ -28,6 +31,8 @@ interface SellerPerformanceDashboardProps {
 }
 
 export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, selectedSellersCount, selectedSellerNames, internalSkusMap }: SellerPerformanceDashboardProps) {
+  const { toast } = useToast();
+  
   const formatLastUpdateTime = (isoDateString: string | null) => {
     if (!isoDateString) return 'N/A';
     try {
@@ -115,9 +120,6 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
       });
     });
     
-    // For buyboxes won/lost, we count unique SKUs across all selected sellers.
-    // An SKU is won if AT LEAST ONE selected seller wins it.
-    // An SKU is lost if ALL selected sellers who list it are losing it.
     let consolidatedBuyboxesWon = 0;
     winningSkusSellerMap.forEach((sellersWinningThisSku, sku) => {
         if (selectedSellerNames.some(selectedSeller => sellersWinningThisSku.has(selectedSeller))) {
@@ -138,11 +140,11 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
 
 
     const consolidatedBrandWins: BrandBuyboxWinSummary[] = Object.entries(brandWinsAggregator)
-        .map(([marca, data]) => ({ marca, wins: data.skus.size }))
+        .map(([marca, data]) => ({ marca, wins: data.skus.size, skus: [] })) // skus array not needed for display component
         .sort((a, b) => b.wins - a.wins || a.marca.localeCompare(b.marca));
 
     const consolidatedMarketplaceWins: MarketplaceBuyboxWinSummary[] = Object.entries(marketplaceWinsAggregator)
-        .map(([marketplace, data]) => ({ marketplace, wins: data.skus.size }))
+        .map(([marketplace, data]) => ({ marketplace, wins: data.skus.size, skus: [] })) // skus array not needed for display component
         .sort((a, b) => b.wins - a.wins || a.marketplace.localeCompare(b.marketplace));
 
     return {
@@ -160,6 +162,88 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
 
 
   const isChartDataLoading = isLoading || (performanceMetricsList.length > 0 && (consolidatedMetrics.consolidatedBrandWins.length === 0 && consolidatedMetrics.consolidatedMarketplaceWins.length === 0 && Object.keys(internalSkusMap).length === 0) && consolidatedMetrics.buyboxesWon > 0);
+
+  const handleExportLosingBuybox = () => {
+    if (!consolidatedMetrics.allLosingProducts || consolidatedMetrics.allLosingProducts.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "Nenhum Dado para Exportar",
+        description: "Não há produtos perdendo o buybox para exportar nesta visualização.",
+      });
+      return;
+    }
+
+    const dataToExport = consolidatedMetrics.allLosingProducts.map(product => ({
+      'SKU Principal': product.sku,
+      'SKU Interno': product.internalSku || 'N/A',
+      'Marca': product.marca || 'N/A',
+      'Descrição': product.descricao,
+      'Seu Vendedor': product.sellerName,
+      'Seu Preço (R$)': product.sellerPrice,
+      'Vencedor do Buybox': product.winningSeller,
+      'Preço do Vencedor (R$)': product.winningPrice,
+      'Diferença (R$)': product.priceDifference,
+      'Marketplace': product.marketplace,
+      'Data da Raspagem': formatTableCellDateTime(product.data_hora),
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const columnWidths = [
+      { wch: 25 }, { wch: 25 }, { wch: 20 }, { wch: 50 }, { wch: 30 },
+      { wch: 15 }, { wch: 30 }, { wch: 20 }, { wch: 15 }, { wch: 20 }, { wch: 20 }
+    ];
+    worksheet['!cols'] = columnWidths;
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Perdendo Buybox");
+    XLSX.writeFile(workbook, `export_perdendo_buybox_${new Date().toISOString().split('T')[0]}.xlsx`);
+
+    toast({
+      title: "Download Iniciado",
+      description: `${dataToExport.length} registros (perdendo buybox) estão sendo exportados.`,
+    });
+  };
+
+  const handleExportWinningBuybox = () => {
+    if (!consolidatedMetrics.allWinningProducts || consolidatedMetrics.allWinningProducts.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "Nenhum Dado para Exportar",
+        description: "Não há produtos ganhando o buybox para exportar nesta visualização.",
+      });
+      return;
+    }
+    
+    const dataToExport = consolidatedMetrics.allWinningProducts.map(product => ({
+      'SKU Principal': product.sku,
+      'SKU Interno': product.internalSku || 'N/A',
+      'Marca': product.marca || 'N/A',
+      'Descrição': product.descricao,
+      'Seu Vendedor': product.sellerName,
+      'Seu Preço (R$)': product.sellerPrice,
+      'Próximo Concorrente': product.nextCompetitorSellerName || 'Sem concorrente',
+      'Preço Próximo Concorrente (R$)': product.nextCompetitorSellerName !== null ? (product.sellerPrice + (product.priceDifferenceToNext || 0)) : 'N/A',
+      'Margem (R$)': product.priceDifferenceToNext !== null ? product.priceDifferenceToNext : 'N/A',
+      'Marketplace': product.marketplace,
+      'Data da Raspagem': formatTableCellDateTime(product.data_hora),
+    }));
+    
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const columnWidths = [
+      { wch: 25 }, { wch: 25 }, { wch: 20 }, { wch: 50 }, { wch: 30 },
+      { wch: 15 }, { wch: 30 }, { wch: 25 }, { wch: 15 }, { wch: 20 }, { wch: 20 }
+    ];
+    worksheet['!cols'] = columnWidths;
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Ganhando Buybox");
+    XLSX.writeFile(workbook, `export_ganhando_buybox_${new Date().toISOString().split('T')[0]}.xlsx`);
+    
+    toast({
+        title: "Download Iniciado",
+        description: `${dataToExport.length} registros (ganhando buybox) estão sendo exportados.`,
+    });
+  };
 
 
   if (isLoading) {
@@ -277,28 +361,36 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
             </AccordionTrigger>
             <AccordionContent className="pt-2 pb-0">
               {consolidatedMetrics.allLosingProducts.length > 0 ? (
-                <div className="overflow-x-auto rounded-md border max-h-[500px]">
-                  <Table>
-                    <TableHeader><TableRow><TableHead className="w-[60px] hidden sm:table-cell">Img</TableHead><TableHead>Produto (SKU/Marca)</TableHead><TableHead>Vendedor Ofertante (Mktplace)</TableHead><TableHead className="text-right">Preços</TableHead><TableHead>Vencedor (Dif.)</TableHead><TableHead className="text-right">Raspagem</TableHead></TableRow></TableHeader>
-                    <TableBody>
-                      {consolidatedMetrics.allLosingProducts.map((item, idx) => (
-                        <TableRow key={`losing-${item.sku}-${item.sellerName}-${item.marketplace}-${idx}`}>
-                          <TableCell className="hidden sm:table-cell"><Image src={item.imagem || "https://placehold.co/50x50.png"} alt={item.descricao} width={50} height={50} className="rounded" data-ai-hint="product item small"/></TableCell>
-                          <TableCell>
-                            <div className="font-medium max-w-xs truncate" title={item.descricao}>{item.descricao}</div>
-                            <div className="text-xs text-muted-foreground">SKU: {item.sku}</div>
-                            {item.internalSku && (<div className="text-xs text-muted-foreground mt-0.5">Interno: {item.internalSku}</div>)}
-                            {item.marca && (<Badge variant="outline" className="text-xs mt-1">{item.marca}</Badge>)}
-                          </TableCell>
-                          <TableCell><div className="font-medium max-w-xs truncate" title={item.sellerName}>{item.sellerName}</div><div className="text-xs text-muted-foreground max-w-xs truncate" title={item.marketplace}>{item.marketplace}</div></TableCell>
-                          <TableCell className="text-right"><div><span className="text-xs text-muted-foreground mr-1">Vencedor:</span><span className="font-semibold text-green-600">R$ {item.winningPrice.toFixed(2)}</span></div><div><span className="text-xs text-muted-foreground mr-1">Seu:</span><span className="font-semibold text-blue-600">R$ {item.sellerPrice.toFixed(2)}</span></div></TableCell>
-                          <TableCell><div className="font-medium max-w-[150px] truncate" title={item.winningSeller}>{item.winningSeller}</div><div className="text-xs text-red-600">Perdendo por R$ {item.priceDifference.toFixed(2)}</div></TableCell>
-                          <TableCell className="text-right text-xs text-muted-foreground">{formatTableCellDateTime(item.data_hora)}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                <>
+                  <div className="flex justify-end mb-4">
+                    <Button onClick={handleExportLosingBuybox} size="sm">
+                      <Download className="mr-2 h-4 w-4" />
+                      Exportar Lista
+                    </Button>
+                  </div>
+                  <div className="overflow-x-auto rounded-md border max-h-[500px]">
+                    <Table>
+                      <TableHeader><TableRow><TableHead className="w-[60px] hidden sm:table-cell">Img</TableHead><TableHead>Produto (SKU/Marca)</TableHead><TableHead>Vendedor Ofertante (Mktplace)</TableHead><TableHead className="text-right">Preços</TableHead><TableHead>Vencedor (Dif.)</TableHead><TableHead className="text-right">Raspagem</TableHead></TableRow></TableHeader>
+                      <TableBody>
+                        {consolidatedMetrics.allLosingProducts.map((item, idx) => (
+                          <TableRow key={`losing-${item.sku}-${item.sellerName}-${item.marketplace}-${idx}`}>
+                            <TableCell className="hidden sm:table-cell"><Image src={item.imagem || "https://placehold.co/50x50.png"} alt={item.descricao} width={50} height={50} className="rounded" data-ai-hint="product item small"/></TableCell>
+                            <TableCell>
+                              <div className="font-medium max-w-xs truncate" title={item.descricao}>{item.descricao}</div>
+                              <div className="text-xs text-muted-foreground">SKU: {item.sku}</div>
+                              {item.internalSku && (<div className="text-xs text-muted-foreground mt-0.5">Interno: {item.internalSku}</div>)}
+                              {item.marca && (<Badge variant="outline" className="text-xs mt-1">{item.marca}</Badge>)}
+                            </TableCell>
+                            <TableCell><div className="font-medium max-w-xs truncate" title={item.sellerName}>{item.sellerName}</div><div className="text-xs text-muted-foreground max-w-xs truncate" title={item.marketplace}>{item.marketplace}</div></TableCell>
+                            <TableCell className="text-right"><div><span className="text-xs text-muted-foreground mr-1">Vencedor:</span><span className="font-semibold text-green-600">R$ {item.winningPrice.toFixed(2)}</span></div><div><span className="text-xs text-muted-foreground mr-1">Seu:</span><span className="font-semibold text-blue-600">R$ {item.sellerPrice.toFixed(2)}</span></div></TableCell>
+                            <TableCell><div className="font-medium max-w-[150px] truncate" title={item.winningSeller}>{item.winningSeller}</div><div className="text-xs text-red-600">Perdendo por R$ {item.priceDifference.toFixed(2)}</div></TableCell>
+                            <TableCell className="text-right text-xs text-muted-foreground">{formatTableCellDateTime(item.data_hora)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </>
               ) : consolidatedMetrics.buyboxesLost > 0 ? (
                 <p className="text-sm text-muted-foreground mt-2">Detalhes de produtos perdendo buybox não disponíveis.</p>
               ) : consolidatedMetrics.totalProductsListed > 0 ? (
@@ -318,31 +410,39 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
             </AccordionTrigger>
             <AccordionContent className="pt-2 pb-0">
               {consolidatedMetrics.allWinningProducts.length > 0 ? (
-                <div className="overflow-x-auto rounded-md border max-h-[500px]">
-                  <Table>
-                    <TableHeader><TableRow><TableHead className="w-[60px] hidden sm:table-cell">Img</TableHead><TableHead>Produto (SKU/Marca)</TableHead><TableHead>Vendedor Ofertante (Mktplace)</TableHead><TableHead className="text-right">Seu Preço (Margem)</TableHead><TableHead>Próx. Concorrente</TableHead><TableHead className="text-right">Raspagem</TableHead></TableRow></TableHeader>
-                    <TableBody>
-                      {consolidatedMetrics.allWinningProducts.map((item, idx) => (
-                        <TableRow key={`winning-${item.sku}-${item.sellerName}-${item.marketplace}-${idx}`}>
-                          <TableCell className="hidden sm:table-cell"><Image src={item.imagem || "https://placehold.co/50x50.png"} alt={item.descricao} width={50} height={50} className="rounded" data-ai-hint="product item small"/></TableCell>
-                          <TableCell>
-                            <div className="font-medium max-w-xs truncate" title={item.descricao}>{item.descricao}</div>
-                            <div className="text-xs text-muted-foreground">SKU: {item.sku}</div>
-                            {item.internalSku && (<div className="text-xs text-muted-foreground mt-0.5">Interno: {item.internalSku}</div>)}
-                            {item.marca && (<Badge variant="outline" className="text-xs mt-1">{item.marca}</Badge>)}
-                          </TableCell>
-                          <TableCell><div className="font-medium max-w-xs truncate" title={item.sellerName}>{item.sellerName}</div><div className="text-xs text-muted-foreground max-w-xs truncate" title={item.marketplace}>{item.marketplace}</div></TableCell>
-                          <TableCell className="text-right"><div className="font-semibold text-green-600">R$ {item.sellerPrice.toFixed(2)}</div><div className="text-xs">{formatDifference(item.priceDifferenceToNext)}</div></TableCell>
-                          <TableCell>
-                            <div className="max-w-[150px] truncate" title={item.nextCompetitorSellerName || undefined}>{item.priceDifferenceToNext !== null && item.priceDifferenceToNext !== undefined ? item.nextCompetitorSellerName || 'N/A' : 'Sem concorrente'}</div>
-                            {(item.priceDifferenceToNext !== null && item.priceDifferenceToNext !== undefined && item.nextCompetitorSellerName && (item.sellerPrice + item.priceDifferenceToNext) > 0) && (<div className="text-xs text-muted-foreground">R$ {(item.sellerPrice + item.priceDifferenceToNext).toFixed(2)}</div>)}
-                          </TableCell>
-                          <TableCell className="text-right text-xs text-muted-foreground">{formatTableCellDateTime(item.data_hora)}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                <>
+                  <div className="flex justify-end mb-4">
+                    <Button onClick={handleExportWinningBuybox} size="sm">
+                      <Download className="mr-2 h-4 w-4" />
+                      Exportar Lista
+                    </Button>
+                  </div>
+                  <div className="overflow-x-auto rounded-md border max-h-[500px]">
+                    <Table>
+                      <TableHeader><TableRow><TableHead className="w-[60px] hidden sm:table-cell">Img</TableHead><TableHead>Produto (SKU/Marca)</TableHead><TableHead>Vendedor Ofertante (Mktplace)</TableHead><TableHead className="text-right">Seu Preço (Margem)</TableHead><TableHead>Próx. Concorrente</TableHead><TableHead className="text-right">Raspagem</TableHead></TableRow></TableHeader>
+                      <TableBody>
+                        {consolidatedMetrics.allWinningProducts.map((item, idx) => (
+                          <TableRow key={`winning-${item.sku}-${item.sellerName}-${item.marketplace}-${idx}`}>
+                            <TableCell className="hidden sm:table-cell"><Image src={item.imagem || "https://placehold.co/50x50.png"} alt={item.descricao} width={50} height={50} className="rounded" data-ai-hint="product item small"/></TableCell>
+                            <TableCell>
+                              <div className="font-medium max-w-xs truncate" title={item.descricao}>{item.descricao}</div>
+                              <div className="text-xs text-muted-foreground">SKU: {item.sku}</div>
+                              {item.internalSku && (<div className="text-xs text-muted-foreground mt-0.5">Interno: {item.internalSku}</div>)}
+                              {item.marca && (<Badge variant="outline" className="text-xs mt-1">{item.marca}</Badge>)}
+                            </TableCell>
+                            <TableCell><div className="font-medium max-w-xs truncate" title={item.sellerName}>{item.sellerName}</div><div className="text-xs text-muted-foreground max-w-xs truncate" title={item.marketplace}>{item.marketplace}</div></TableCell>
+                            <TableCell className="text-right"><div className="font-semibold text-green-600">R$ {item.sellerPrice.toFixed(2)}</div><div className="text-xs">{formatDifference(item.priceDifferenceToNext)}</div></TableCell>
+                            <TableCell>
+                              <div className="max-w-[150px] truncate" title={item.nextCompetitorSellerName || undefined}>{item.priceDifferenceToNext !== null && item.priceDifferenceToNext !== undefined ? item.nextCompetitorSellerName || 'N/A' : 'Sem concorrente'}</div>
+                              {(item.priceDifferenceToNext !== null && item.priceDifferenceToNext !== undefined && item.nextCompetitorSellerName && (item.sellerPrice + item.priceDifferenceToNext) > 0) && (<div className="text-xs text-muted-foreground">R$ {(item.sellerPrice + item.priceDifferenceToNext).toFixed(2)}</div>)}
+                            </TableCell>
+                            <TableCell className="text-right text-xs text-muted-foreground">{formatTableCellDateTime(item.data_hora)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </>
               ) : consolidatedMetrics.buyboxesWon > 0 ? (
                 <p className="text-sm text-muted-foreground mt-2">Ganhando {consolidatedMetrics.buyboxesWon} buybox(es), mas detalhes não disponíveis (sem concorrência direta ou erro).</p>
               ) : (
@@ -355,5 +455,3 @@ export function SellerPerformanceDashboard({ performanceMetricsList, isLoading, 
     </Card>
   );
 }
-
-    
